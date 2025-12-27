@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark-900: #0f0f13;
+  --color-dark-800: #18181b;
+  --color-dark-700: #27272a;
+
+  --color-primary-500: #8b5cf6;
+  --color-primary-400: #a78bfa;
+
+  --color-accent-500: #06b6d4;
+}
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: dark;
+  background-color: var(--color-dark-900);
+  color: rgba(255, 255, 255, 0.87);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
