@@ -10,6 +10,13 @@ CREATE TABLE IF NOT EXISTS tenants (
     email VARCHAR(255) UNIQUE,
     password_hash VARCHAR(255),
     config JSONB, -- { "ai_enabled": true, "prediction_margin": 15 }
+    -- SaaS Fields
+    trial_ends_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() + INTERVAL '14 days',
+    is_super_admin BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) DEFAULT 'active',
+    max_drivers INTEGER DEFAULT 5,
+    max_orders INTEGER DEFAULT 100,
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -26,7 +33,10 @@ CREATE TABLE IF NOT EXISTS drivers (
     last_ping TIMESTAMP WITH TIME ZONE,
     last_seen_at TIMESTAMP WITH TIME ZONE,
     active_route_id UUID,
-    active BOOLEAN DEFAULT TRUE
+    active BOOLEAN DEFAULT TRUE,
+    
+    -- Added fields
+    fcm_token TEXT
 );
 
 -- 1.5 Depósitos (Depots)
@@ -65,6 +75,12 @@ CREATE TABLE IF NOT EXISTS orders (
     updated_at TIMESTAMP WITH TIME ZONE,
     ai_risk_score FLOAT DEFAULT 0,
     ai_fix_notes TEXT,
+    
+    -- Notification Flags
+    notification_sent_starting BOOLEAN DEFAULT FALSE,
+    notification_sent_approaching BOOLEAN DEFAULT FALSE,
+    started_at TIMESTAMP WITH TIME ZONE,
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

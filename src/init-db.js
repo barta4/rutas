@@ -18,8 +18,8 @@ async function initDb() {
             const hashedPassword = await bcrypt.hash('admin123', 10);
 
             await db.query(`
-            INSERT INTO tenants (name, api_key, email, password_hash, config) 
-            VALUES ('Empresa Demo', 'test-api-key', 'admin@demo.com', $1, '{"ai_enabled": true}')
+            INSERT INTO tenants (name, api_key, email, password_hash, config, is_super_admin) 
+            VALUES ('Empresa Demo', 'test-api-key', 'admin@demo.com', $1, '{"ai_enabled": true}', true)
             `, [hashedPassword]);
 
             console.log('✅ Tenant Admin creado: admin@demo.com / admin123');
