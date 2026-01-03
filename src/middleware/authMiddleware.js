@@ -9,7 +9,7 @@ async function authMiddleware(req, res, next) {
     // 1. Estrategia API Key (Sensores / Scripts)
     if (apiKey) {
         try {
-            const result = await db.query('SELECT id, name, config FROM tenants WHERE api_key = $1', [apiKey]);
+            const result = await db.query('SELECT id, name, config, is_super_admin FROM tenants WHERE api_key = $1', [apiKey]);
             if (result.rowCount === 0) return res.status(403).json({ error: 'API Key inválida' });
             req.tenant = result.rows[0];
             req.authMethod = 'api_key';

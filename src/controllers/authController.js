@@ -14,7 +14,7 @@ async function login(req, res) {
     console.log('Login attempt for:', email);
 
     try {
-        const result = await db.query('SELECT id, name, email, password_hash, config FROM tenants WHERE email = $1', [email]);
+        const result = await db.query('SELECT id, name, email, password_hash, config, is_super_admin FROM tenants WHERE email = $1', [email]);
 
         if (result.rowCount === 0) {
             console.log('Login failed: User not found in DB');
@@ -34,7 +34,7 @@ async function login(req, res) {
 
         // Generar Token
         const token = jwt.sign(
-            { id: tenant.id, email: tenant.email, name: tenant.name },
+            { id: tenant.id, email: tenant.email, name: tenant.name, is_super_admin: tenant.is_super_admin },
             JWT_SECRET,
             { expiresIn: '8h' }
         );
@@ -45,7 +45,8 @@ async function login(req, res) {
                 id: tenant.id,
                 name: tenant.name,
                 email: tenant.email,
-                ai_enabled: tenant.config?.ai_enabled
+                ai_enabled: tenant.config?.ai_enabled,
+                is_super_admin: tenant.is_super_admin
             }
         });
 
