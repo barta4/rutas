@@ -60,7 +60,11 @@ export default function SuperAdmin() {
         try {
             await api.put(`/admin/tenants/${id}`, limits);
             fetchData();
-        } catch (e) { alert('Error actualizando plan'); }
+            fetchData();
+        } catch (e) {
+            const msg = e.response?.data?.error || e.message;
+            alert(`Error ${e.response?.status || ''}: ${msg}`);
+        }
     };
 
     const handleImpersonate = async (id) => {
@@ -70,7 +74,11 @@ export default function SuperAdmin() {
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('user', JSON.stringify(res.data.user));
             window.location.href = '/dashboard';
-        } catch (e) { alert('Error iniciando sesión'); }
+            window.location.href = '/dashboard';
+        } catch (e) {
+            const msg = e.response?.data?.error || e.message;
+            alert(`Error ${e.response?.status || ''}: ${msg}`);
+        }
     };
 
     const handleResetPassword = async (id) => {
