@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     max_drivers INTEGER DEFAULT 5,
     max_orders INTEGER DEFAULT 100,
     
+    updated_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
