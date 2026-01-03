@@ -121,6 +121,9 @@ app.get('/v1/me', (req, res) => {
 
 const superAdminController = require('./controllers/superAdminController');
 app.get('/v1/admin/tenants', superAdminController.ensureSuperAdmin, superAdminController.getAllTenants);
+app.get('/v1/admin/stats', superAdminController.ensureSuperAdmin, superAdminController.getDashboardStats);
+app.post('/v1/admin/tenants/:id/impersonate', superAdminController.ensureSuperAdmin, superAdminController.impersonateTenant);
+app.post('/v1/admin/tenants/:id/reset-password', superAdminController.ensureSuperAdmin, superAdminController.resetTenantPassword);
 app.put('/v1/admin/tenants/:id', superAdminController.ensureSuperAdmin, superAdminController.updateTenant);
 
 // Serve Frontend Static Files
