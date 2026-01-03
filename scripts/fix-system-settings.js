@@ -1,6 +1,12 @@
 
 const { Pool } = require('pg');
-require('dotenv').config({ path: '../.env' }); // Adjust path if needed
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+
+if (!process.env.DATABASE_URL) {
+    console.error('❌ Error: DATABASE_URL no encontrada. Verifica que el archivo .env existe.');
+    process.exit(1);
+}
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
