@@ -55,7 +55,7 @@ async function updateTenant(req, res) {
         res.json(result.rows[0]);
 
     } catch (err) {
-        console.error(err);
+        console.error('Update Tenant Error:', err);
         res.status(500).json({ error: 'Error updating tenant' });
     }
 }
@@ -89,7 +89,6 @@ async function impersonateTenant(req, res) {
 
         // Generate Token
         const token = jwt.sign(
-            { id: tenant.id, email: tenant.email, name: tenant.name, is_super_admin: tenant.is_super_admin },
             { id: tenant.id, email: tenant.email, name: tenant.name, is_super_admin: tenant.is_super_admin },
             process.env.JWT_SECRET || 'super_secret_jwt_key_123',
             { expiresIn: '1h' }
