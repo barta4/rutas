@@ -132,6 +132,10 @@ app.put('/v1/admin/settings/:key', superAdminController.ensureSuperAdmin, superA
 // Public/Protected route for Integrations page to read settings (Authenticated users)
 app.get('/v1/system/settings', authMiddleware, superAdminController.getSystemSettings);
 
+const integrationsController = require('./controllers/integrationsController');
+app.post('/v1/integrations/:type', authMiddleware, integrationsController.saveIntegration);
+app.get('/v1/integrations/:type', authMiddleware, integrationsController.getIntegration);
+
 // Serve Frontend Static Files
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
@@ -139,6 +143,10 @@ app.use(express.static(path.join(__dirname, '../frontend/dist')));
 app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
+
+// Integrations (Bridge)
+const integrationsManager = require('./integrations');
+integrationsManager.start();
 
 // Start Server
 app.listen(PORT, () => {

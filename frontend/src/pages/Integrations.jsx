@@ -57,9 +57,9 @@ export default function Integrations() {
             name: 'Dolibarr ERP',
             description: 'Gestión de flotas y pedidos desde Dolibarr.',
             icon: <Server size={24} className="text-blue-500" />,
-            status: 'coming_soon',
-            action: 'none',
-            buttonText: 'Pronto'
+            status: 'available',
+            action: 'configure',
+            buttonText: 'Conectar'
         },
         {
             id: 'api-access',
@@ -74,10 +74,31 @@ export default function Integrations() {
         }
     ];
 
-    const handleSaveConfig = (e) => {
+    const handleSaveConfig = async (e) => {
         e.preventDefault();
-        alert('¡Configuración guardada! (Simulado: El worker comenzaría a ejecutarse)');
-        setSelectedIntegration(null);
+
+        // Example logic to save depending on type
+        const type = selectedIntegration.id; // 'odoo' or 'dolibarr'
+
+        const form = e.target;
+        const config = {
+            url: form.url.value,
+            api_key: form.api_key.value,
+            db: form.db?.value, // Optional for some
+            user: form.user?.value
+        };
+
+        try {
+            await api.post(`/integrations/${type}`, {
+                config,
+                is_active: true
+            });
+            alert(`¡${selectedIntegration.name} conectado exitosamente!`);
+            setSelectedIntegration(null);
+        } catch (err) {
+            alert('Error al guardar integración');
+            console.error(err);
+        }
     };
 
     const [apkUrl, setApkUrl] = useState(null);
@@ -189,6 +210,7 @@ export default function Integrations() {
                             <div>
                                 <label className="block text-xs uppercase text-gray-400 font-bold mb-1">URL del Servidor</label>
                                 <input
+                                    name="url"
                                     className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                     placeholder="https://mi-empresa.odoo.com"
                                     required
@@ -196,25 +218,27 @@ export default function Integrations() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos</label>
+                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos (Odoo)</label>
                                     <input
+                                        name="db"
                                         className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                        placeholder="db_name"
-                                        required
+                                        placeholder="db_name (Solo Odoo)"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Usuario / Email</label>
                                     <input
+                                        name="user"
                                         className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                         placeholder="admin@..."
-                                        required
+
                                     />
                                 </div>
                             </div>
                             <div>
                                 <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key / Contraseña</label>
                                 <input
+                                    name="api_key"
                                     type="password"
                                     className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                     placeholder="••••••••••••"
