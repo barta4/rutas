@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
-import { Activity, Truck, Package, Zap, LogOut, Settings, Code } from 'lucide-react';
+import { Activity, Truck, Package, Zap, LogOut, Settings, Code, Puzzle } from 'lucide-react';
 import api from '../services/api';
 
 const Layout = () => {
@@ -56,6 +56,9 @@ const Layout = () => {
                     </Link>
                     <Link to="/dashboard/webhooks" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors focus:bg-white/10 focus:text-white">
                         <Zap size={20} /> Webhooks
+                    </Link>
+                    <Link to="/dashboard/integrations" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors focus:bg-white/10 focus:text-white">
+                        <Puzzle size={20} /> Integraciones
                     </Link>
                     <Link to="/dashboard/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors focus:bg-white/10 focus:text-white">
                         <Settings size={20} /> Configuración

@@ -10,6 +10,7 @@ import RouteSimulator from './pages/RouteSimulator';
 import Register from './pages/Register';
 import SuperAdmin from './pages/SuperAdmin';
 import ApiDocs from './pages/ApiDocs';
+import Integrations from './pages/Integrations';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
