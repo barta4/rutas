@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, ShoppingBag, Database, Puzzle, Server, CheckCircle, X, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Integrations() {
     const [selectedIntegration, setSelectedIntegration] = useState(null);
@@ -73,21 +74,41 @@ export default function Integrations() {
         }
     ];
 
-    const handleAction = (item) => {
-        if (item.action === 'configure') {
-            setSelectedIntegration(item);
-        } else if (item.action === 'download') {
-            // Placeholder link or real one if user provided
-            window.open('https://facilenvio.urufile.com/driver-app-latest.apk', '_blank');
-        } else if (item.action === 'docs') {
-            alert('Revisa la sección Webhooks en el menú lateral.');
-        }
-    };
-
     const handleSaveConfig = (e) => {
         e.preventDefault();
         alert('¡Configuración guardada! (Simulado: El worker comenzaría a ejecutarse)');
         setSelectedIntegration(null);
+    };
+
+    const [apkUrl, setApkUrl] = useState(null);
+
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                // Assuming we use api instance which handles base URL and auth
+                // Ideally this endpoint might be public for unauth access if needed, 
+                // but since this page is dashboard, we have token.
+                const res = await api.get('/system/settings');
+                if (res.data.driver_app_url) setApkUrl(res.data.driver_app_url);
+            } catch (e) {
+                console.error('Error loading system settings', e);
+            }
+        };
+        loadSettings();
+    }, []);
+
+    const handleAction = (item) => {
+        if (item.action === 'configure') {
+            setSelectedIntegration(item);
+        } else if (item.action === 'download') {
+            if (apkUrl) {
+                window.open(apkUrl, '_blank');
+            } else {
+                alert('El enlace de descarga no ha sido configurado por el administrador.');
+            }
+        } else if (item.action === 'docs') {
+            alert('Revisa la sección Webhooks en el menú lateral.');
+        }
     };
 
     return (
@@ -129,8 +150,8 @@ export default function Integrations() {
                                     onClick={() => handleAction(item)}
                                     disabled={item.status === 'coming_soon'}
                                     className={`w-full py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${item.status === 'coming_soon'
-                                            ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
-                                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-900/20'
+                                        ? 'bg-zinc-800 text-gray-600 cursor-not-allowed'
+                                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-lg shadow-blue-900/20'
                                         }`}
                                 >
                                     {item.action === 'download' && <Download size={16} />}

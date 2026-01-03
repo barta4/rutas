@@ -128,11 +128,42 @@ async function resetTenantPassword(req, res) {
     }
 }
 
+async function getSystemSettings(req, res) {
+    try {
+        const result = await db.query('SELECT key, value FROM system_settings');
+        const settings = {};
+        result.rows.forEach(row => {
+            settings[row.key] = row.value;
+        });
+        res.json(settings);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error fetching settings' });
+    }
+}
+
+async function updateSystemSetting(req, res) {
+    const { key } = req.params;
+    const { value } = req.body;
+    try {
+        await db.query(
+            'INSERT INTO system_settings (key, value, updated_at) VALUES ($1, $2, NOW()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()',
+            [key, value]
+        );
+        res.json({ message: 'Setting updated' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error updating setting' });
+    }
+}
+
 module.exports = {
     ensureSuperAdmin,
     getAllTenants,
     updateTenant,
     getDashboardStats,
     impersonateTenant,
-    resetTenantPassword
+    resetTenantPassword,
+    getSystemSettings,
+    updateSystemSetting
 };

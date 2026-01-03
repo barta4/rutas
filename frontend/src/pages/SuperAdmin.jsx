@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
-import { Users, Truck, AlertTriangle, CheckCircle, Search, Shield, Calendar, Activity, UserPlus, Package, LogIn, Key } from 'lucide-react';
+import { Users, Truck, AlertTriangle, CheckCircle, Search, Shield, Calendar, Activity, UserPlus, Package, LogIn, Key, Settings } from 'lucide-react';
 
 export default function SuperAdmin() {
     const [tenants, setTenants] = useState([]);
@@ -122,6 +122,9 @@ export default function SuperAdmin() {
                     />
                 </div>
             </div>
+
+            {/* System Configuration */}
+            <SystemConfigSection />
 
             {/* Tenants Table */}
             <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">

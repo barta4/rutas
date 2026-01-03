@@ -126,6 +126,12 @@ app.post('/v1/admin/tenants/:id/impersonate', superAdminController.ensureSuperAd
 app.post('/v1/admin/tenants/:id/reset-password', superAdminController.ensureSuperAdmin, superAdminController.resetTenantPassword);
 app.put('/v1/admin/tenants/:id', superAdminController.ensureSuperAdmin, superAdminController.updateTenant);
 
+// System Settings Routes
+app.get('/v1/admin/settings', superAdminController.ensureSuperAdmin, superAdminController.getSystemSettings);
+app.put('/v1/admin/settings/:key', superAdminController.ensureSuperAdmin, superAdminController.updateSystemSetting);
+// Public/Protected route for Integrations page to read settings (Authenticated users)
+app.get('/v1/system/settings', authMiddleware, superAdminController.getSystemSettings);
+
 // Serve Frontend Static Files
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
