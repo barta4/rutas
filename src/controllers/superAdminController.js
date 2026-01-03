@@ -35,6 +35,11 @@ async function updateTenant(req, res) {
             query += `, max_drivers = $${idx++}`;
             params.push(max_drivers);
         }
+        const { max_orders } = req.body;
+        if (max_orders !== undefined) {
+            query += `, max_orders = $${idx++}`;
+            params.push(max_orders);
+        }
         if (status) {
             query += `, status = $${idx++}`;
             params.push(status);
@@ -85,7 +90,8 @@ async function impersonateTenant(req, res) {
         // Generate Token
         const token = jwt.sign(
             { id: tenant.id, email: tenant.email, name: tenant.name, is_super_admin: tenant.is_super_admin },
-            process.env.JWT_SECRET,
+            { id: tenant.id, email: tenant.email, name: tenant.name, is_super_admin: tenant.is_super_admin },
+            process.env.JWT_SECRET || 'super_secret_jwt_key_123',
             { expiresIn: '1h' }
         );
 
