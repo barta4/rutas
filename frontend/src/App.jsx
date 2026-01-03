@@ -32,6 +32,7 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="simulator/:driverId" element={<RouteSimulator />} />
         <Route path="super-admin" element={<SuperAdmin />} />
+        <Route path="integrations" element={<Integrations />} />
         <Route path="developers" element={<ApiDocs />} />
       </Route>
 

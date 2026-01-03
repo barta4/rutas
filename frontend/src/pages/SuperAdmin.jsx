@@ -240,3 +240,58 @@ const TenantRow = ({ tenant, onUpdateStatus, onExtendTrial, onUpdatePlan, onImpe
         </tr>
     );
 };
+
+const SystemConfigSection = () => {
+    const [apkUrl, setApkUrl] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    const loadSettings = async () => {
+        try {
+            const res = await api.get('/admin/settings');
+            if (res.data.driver_app_url) setApkUrl(res.data.driver_app_url);
+        } catch (e) { console.error('Error loading settings', e); }
+    };
+
+    const handleSave = async () => {
+        try {
+            setLoading(true);
+            await api.put('/admin/settings/driver_app_url', { value: apkUrl });
+            alert('Configuración guardada correctamente');
+        } catch (e) {
+            alert('Error guardando configuración');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="mb-8 bg-zinc-900 border border-zinc-800 rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Settings size={20} className="text-gray-400" /> Configuración del Sistema
+            </h2>
+            <div className="max-w-xl">
+                <label className="block text-xs uppercase text-gray-400 font-bold mb-2">URL de Descarga APK (Driver App)</label>
+                <div className="flex gap-2">
+                    <input
+                        className="flex-1 bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none text-sm"
+                        placeholder="https://..."
+                        value={apkUrl}
+                        onChange={e => setApkUrl(e.target.value)}
+                    />
+                    <button
+                        onClick={handleSave}
+                        disabled={loading}
+                        className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                        {loading ? 'Guardando...' : 'Guardar'}
+                    </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Este enlace se usará en el botón "Descargar APK" de la tienda de integraciones.</p>
+            </div>
+        </div>
+    );
+};
