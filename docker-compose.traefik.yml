@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: logistica_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - dokploy-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: alfredobartaburu/logistica-backend:latest
+    restart: always
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgres://postgres:postgres@db:5432/logistica_db
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dokploy-network
+
+  frontend:
+    image: alfredobartaburu/logistica-frontend:latest
+    restart: always
+    expose:
+      - "80"
+    labels:
+      - "traefik.enable=true"
+      # DOMINIO: Cambia 'app.midominio.com' por el tuyo real
+      - "traefik.http.routers.logistica-app.rule=Host(`app.midominio.com`)"
+      - "traefik.http.routers.logistica-app.entrypoints=websecure"
+      - "traefik.http.routers.logistica-app.tls.certresolver=letsencrypt"
+      # Puerto interno de Nginx
+      - "traefik.http.services.logistica-app.loadbalancer.server.port=80"
+    depends_on:
+      - backend
+    networks:
+      - dokploy-network
+
+volumes:
+  postgres_data:
+
+
+networks:
+  dokploy-network:
+    external: true

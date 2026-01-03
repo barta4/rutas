@@ -10,39 +10,75 @@ import useAuthStore from '../stores/authStore';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 
-// --- Background Task (Simulated) ---
+// --- Background Task con fetch() ---
 TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-    // ... same as before
+    if (error) {
+        console.error("Location Task Error:", error);
+        return;
+    }
     if (data) {
         const { locations } = data;
         const location = locations[0];
+
         try {
+            const token = await SecureStore.getItemAsync('token');
             const driverStr = await SecureStore.getItemAsync('driver');
-            if (driverStr) {
-                const driver = JSON.parse(driverStr);
-                await api.post('/telemetry', {
-                    driver_id: driver.id,
-                    lat: location.coords.latitude,
-                    lng: location.coords.longitude,
-                    timestamp: location.timestamp
-                });
+            const apiUrl = await SecureStore.getItemAsync('api_url') || 'http://10.0.2.2:3001/v1';
+
+            if (!token || !driverStr) {
+                console.warn("Background: Missing token or driver data");
+                return;
             }
-        } catch (e) { }
+
+            const driver = JSON.parse(driverStr);
+            if (!driver?.id) {
+                console.warn("Background: Invalid driver data");
+                return;
+            }
+
+            console.log(`Sending telemetry for driver ${driver.id}`);
+
+            // Usar XMLHttpRequest en lugar de fetch() para mayor compatibilidad en background
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${apiUrl}/telemetry`);
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    console.log("✓ Telemetry sent successfully");
+                } else {
+                    console.error("Telemetry failed:", xhr.status, xhr.responseText);
+                }
+            };
+
+            xhr.onerror = function () {
+                console.error("Network error sending telemetry");
+            };
+
+            xhr.send(JSON.stringify({
+                driver_id: driver.id,
+                lat: location.coords.latitude,
+                lng: location.coords.longitude,
+                timestamp: new Date(location.timestamp).toISOString()
+            }));
+        } catch (e) {
+            console.error("Background Task Exception:", e);
+        }
     }
 });
 
 function getDistanceFromLatLonInM(lat1, lon1, lat2, lon2) {
-    var R = 6371; // Radius of the earth in km
-    var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+    var R = 6371;
+    var dLat = deg2rad(lat2 - lat1);
     var dLon = deg2rad(lon2 - lon1);
     var a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        ;
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
     var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var d = R * c; // Distance in km
-    return d * 1000; // Distance in meters
+    var d = R * c;
+    return d * 1000;
 }
 
 function deg2rad(deg) {
@@ -55,7 +91,6 @@ export default function RouteListScreen() {
     const [loading, setLoading] = useState(false);
     const [isTracking, setIsTracking] = useState(false);
 
-    // --- POD Modal State ---
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [note, setNote] = useState('');
@@ -77,39 +112,52 @@ export default function RouteListScreen() {
 
     useEffect(() => {
         fetchRoute();
-        checkPermissions();
-        checkTrackingStatus();
+        startAutomaticTracking();
     }, []);
 
-    const checkPermissions = async () => {
-        // Location
-        await Location.requestForegroundPermissionsAsync();
-        // Camera
-        await ImagePicker.requestCameraPermissionsAsync();
-    };
+    const startAutomaticTracking = async () => {
+        try {
+            // 1. Primero foreground
+            const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
 
-    // ... (Tracking logic same as before)
-    const checkTrackingStatus = async () => {
-        const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-        setIsTracking(hasStarted);
-    };
+            if (fgStatus !== 'granted') {
+                Alert.alert('Permiso Requerido', 'Se requiere ubicación en primer plano');
+                return;
+            }
 
-    const toggleTracking = async () => {
-        const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
-        if (hasStarted) {
-            await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
-            setIsTracking(false);
-        } else {
-            await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-                accuracy: Location.Accuracy.High,
-                distanceInterval: 50,
-                deferredUpdatesInterval: 10000,
-                foregroundService: {
-                    notificationTitle: "Logística AI",
-                    notificationBody: "Compartiendo ubicación...",
-                },
-            });
+            // 2. Luego background (crítico en Android 14+)
+            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+
+            if (bgStatus !== 'granted') {
+                Alert.alert(
+                    'Ubicación en segundo plano',
+                    'Para enviar tu ubicación constantemente, debes permitir "Permitir todo el tiempo" en los ajustes de ubicación.',
+                    [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: 'Abrir ajustes', onPress: () => Linking.openSettings() }
+                    ]
+                );
+                return;
+            }
+
+            const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+            if (!hasStarted) {
+                await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+                    accuracy: Location.Accuracy.Balanced,
+                    distanceInterval: 10,
+                    timeInterval: 30000,
+                    deferredUpdatesInterval: 30000,
+                    foregroundService: {
+                        notificationTitle: "GliUY Logística",
+                        notificationBody: "Compartiendo ubicación en segundo plano...",
+                        notificationColor: "#8b5cf6"
+                    },
+                });
+            }
             setIsTracking(true);
+        } catch (e) {
+            console.error('Tracking Error:', e);
+            Alert.alert('Error', 'No se pudo iniciar el tracking: ' + e.message);
         }
     };
 
@@ -118,7 +166,6 @@ export default function RouteListScreen() {
         setNote('');
         setPhoto(null);
 
-        // Check Distance
         let loc = await Location.getCurrentPositionAsync({});
         const dist = getDistanceFromLatLonInM(
             loc.coords.latitude, loc.coords.longitude,
@@ -126,7 +173,7 @@ export default function RouteListScreen() {
         );
 
         setDistance(dist);
-        setIsFar(dist > 150); // Threshold 150m
+        setIsFar(dist > 150);
 
         setModalVisible(true);
     };
@@ -155,7 +202,6 @@ export default function RouteListScreen() {
             const formData = new FormData();
             formData.append('status', 'completed');
 
-            // Current Coords
             const loc = await Location.getCurrentPositionAsync({});
             const proofData = {
                 note: note,
@@ -168,7 +214,6 @@ export default function RouteListScreen() {
             formData.append('proof_data_json', JSON.stringify(proofData));
 
             if (photo) {
-                // Determine file type
                 let filename = photo.uri.split('/').pop();
                 let match = /\.(\w+)$/.exec(filename);
                 let type = match ? `image/${match[1]}` : `image`;
@@ -180,9 +225,7 @@ export default function RouteListScreen() {
                 });
             }
 
-            await api.post(`/driver/orders/${selectedOrder.id}/status`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            await api.post(`/driver/orders/${selectedOrder.id}/status`, formData);
 
             setModalVisible(false);
             Alert.alert("Éxito", "Orden completada correctamente.");
@@ -196,8 +239,6 @@ export default function RouteListScreen() {
         }
     };
 
-    // Determine Next Active Order based on sequence
-    // Assumes route is sorted by delivery_sequence
     const pendingOrders = route.filter(o => o.status === 'pending');
     const nextActiveOrder = pendingOrders.length > 0 ? pendingOrders.reduce((prev, curr) => prev.delivery_sequence < curr.delivery_sequence ? prev : curr) : null;
 
@@ -209,15 +250,48 @@ export default function RouteListScreen() {
         Linking.openURL(`tel:${phone}`);
     };
 
+    const handleStartOrder = async (item) => {
+        // 1. Si ya está en progreso, solo abre mapas
+        if (item.status === 'in_progress') {
+            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
+            return;
+        }
+
+        // 2. Si no, avisar al backend (En Camino) -> Webhook
+        try {
+            // Optimistic Update
+            const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
+            setRoute(updated);
+
+            let loc = null;
+            try {
+                const { coords } = await Location.getCurrentPositionAsync({});
+                loc = coords;
+            } catch (e) {
+                console.warn("No location for start order");
+            }
+
+            await api.post(`/driver/orders/${item.id}/start`, {
+                lat: loc?.latitude,
+                lng: loc?.longitude
+            });
+
+            // 3. Abrir Mapas
+            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
+
+        } catch (e) {
+            console.error("Error starting order", e);
+            Alert.alert("Error", "No se pudo notificar el inicio de viaje, pero abriendo mapas...", [
+                { text: "OK", onPress: () => Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`) }
+            ]);
+            // Revert on serious failure? Maybe not needed for UX speed.
+        }
+    };
+
     const renderItem = ({ item }) => {
         const isCompleted = item.status === 'completed';
         const isActive = nextActiveOrder && item.id === nextActiveOrder.id;
         const isPending = item.status === 'pending';
-
-        // Logic:
-        // - Completed: Visible but different style.
-        // - Active (Next Pending): Full opacity, Enabled.
-        // - Other Pending: Grayed out, Disabled.
         const isDisabled = isPending && !isActive;
 
         return (
@@ -245,14 +319,13 @@ export default function RouteListScreen() {
                 </View>
                 <View style={styles.infoRow}>
                     <Phone size={20} color="#a1a1aa" />
-                    <Text style={styles.detailText}>{item.customer_phone || 'Sin télefono'}</Text>
+                    <Text style={styles.detailText}>{item.customer_phone || 'Sin teléfono'}</Text>
                 </View>
                 <View style={styles.infoRow}>
                     <User size={20} color="#a1a1aa" />
                     <Text style={styles.detailText}>CI: {item.customer_cedula || 'N/A'}</Text>
                 </View>
 
-                {/* Actions - Only visible/enabled if Active or (optionally) Completed just for review */}
                 {!isCompleted && (
                     <View style={styles.actions}>
                         <TouchableOpacity
@@ -265,11 +338,11 @@ export default function RouteListScreen() {
 
                         <TouchableOpacity
                             style={[styles.actionButton, styles.navButton, isDisabled && { backgroundColor: '#3f3f46' }]}
-                            onPress={() => Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`)}
+                            onPress={() => handleStartOrder(item)}
                             disabled={isDisabled}
                         >
                             <Navigation size={18} color="#fff" />
-                            <Text style={styles.actionText}>Ir</Text>
+                            <Text style={styles.actionText}>{isDisabled ? '...' : (item.status === 'in_progress' ? 'Retomar' : 'Ir')}</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -288,28 +361,21 @@ export default function RouteListScreen() {
 
     return (
         <View style={styles.container}>
-            {/* Header same as before */}
             <View style={styles.header}>
                 <Text style={styles.greeting}>Hola, {driver?.name}</Text>
                 <TouchableOpacity onPress={logout}><LogOut size={24} color="#ef4444" /></TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-                style={[styles.trackingButton, { backgroundColor: isTracking ? '#ef4444' : '#10b981' }]}
-                onPress={toggleTracking}
-            >
-                <Radio size={20} color="#fff" />
-                <Text style={styles.trackingText}>{isTracking ? 'Detener Rastreo' : 'Iniciar Ruta'}</Text>
-            </TouchableOpacity>
 
             <FlatList
                 data={route}
                 renderItem={renderItem}
                 keyExtractor={item => item.id}
                 contentContainerStyle={styles.list}
+                refreshControl={
+                    <RefreshControl refreshing={loading} onRefresh={fetchRoute} colors={['#8b5cf6']} tintColor="#8b5cf6" />
+                }
             />
 
-            {/* --- POD MODAL --- */}
             <Modal
                 animationType="slide"
                 transparent={true}
@@ -370,8 +436,6 @@ export default function RouteListScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#0f0f13' },
-    // Reuse previous styles...
-    // New Modal Styles
     modalView: {
         flex: 1,
         marginTop: 50,
@@ -433,11 +497,8 @@ const styles = StyleSheet.create({
         alignItems: 'center'
     },
     submitText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-    // --- Re-adding crucial previous styles to ensure it renders correctly ---
     header: { flexDirection: 'row', justifyContent: 'space-between', padding: 24, paddingTop: 60, backgroundColor: '#18181b' },
     greeting: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
-    trackingButton: { margin: 16, padding: 16, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', gap: 8 },
-    trackingText: { color: '#fff', fontWeight: 'bold' },
     list: { padding: 16 },
     card: { backgroundColor: '#18181b', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#27272a' },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
@@ -449,7 +510,7 @@ const styles = StyleSheet.create({
     address: { color: '#a1a1aa' },
     actions: { flexDirection: 'row', gap: 12, marginTop: 12 },
     actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 10, gap: 8 },
-    callButton: { backgroundColor: '#e11d48', flex: 0.3 }, // New Pink/Red for Call
+    callButton: { backgroundColor: '#e11d48', flex: 0.3 },
     navButton: { backgroundColor: '#3b82f6' },
     completeButton: { backgroundColor: '#10b981' },
     actionText: { color: '#fff', fontWeight: 'bold' },

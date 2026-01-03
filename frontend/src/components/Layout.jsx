@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Outlet } from 'react-router-dom';
-import { Activity, Truck, Package, Zap, LogOut, Settings } from 'lucide-react';
+import { Activity, Truck, Package, Zap, LogOut, Settings, Code } from 'lucide-react';
 import api from '../services/api';
 
 const Layout = () => {
@@ -59,6 +59,9 @@ const Layout = () => {
                     </Link>
                     <Link to="/dashboard/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors focus:bg-white/10 focus:text-white">
                         <Settings size={20} /> Configuración
+                    </Link>
+                    <Link to="/dashboard/developers" className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors focus:bg-white/10 focus:text-white mt-auto">
+                        <Code size={20} /> Developers
                     </Link>
                 </aside>
 

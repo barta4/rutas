@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Truck, Plus, Edit, Trash, X } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const API_URL = 'http://localhost:3001/v1';
 
 export default function Drivers() {
     const [drivers, setDrivers] = useState([]);
@@ -11,16 +9,13 @@ export default function Drivers() {
     const [editingDriver, setEditingDriver] = useState(null);
     const [formData, setFormData] = useState({ name: '', username: '', password: '', vehicle: '' });
 
-    const token = localStorage.getItem('token');
-    const config = { headers: { Authorization: `Bearer ${token}` } };
-
     useEffect(() => {
         fetchDrivers();
     }, []);
 
     const fetchDrivers = async () => {
         try {
-            const res = await axios.get(`${API_URL}/drivers`, config);
+            const res = await api.get('/drivers');
             setDrivers(res.data);
         } catch (e) { console.error(e); }
     };
@@ -29,20 +24,20 @@ export default function Drivers() {
         e.preventDefault();
         try {
             if (editingDriver) {
-                await axios.put(`${API_URL}/drivers/${editingDriver.id}`, {
+                await api.put(`/drivers/${editingDriver.id}`, {
                     name: formData.name,
                     username: formData.username,
                     vehicle_info: formData.vehicle,
                     active: true,
                     password: formData.password || undefined // Only send if changing
-                }, config);
+                });
             } else {
-                await axios.post(`${API_URL}/drivers`, {
+                await api.post('/drivers', {
                     name: formData.name,
                     username: formData.username,
                     password: formData.password,
                     vehicle_info: formData.vehicle
-                }, config);
+                });
             }
             fetchDrivers();
             closeModal();
@@ -54,7 +49,7 @@ export default function Drivers() {
     const handleDelete = async (id) => {
         if (!window.confirm('¿Seguro que deseas eliminar este chofer?')) return;
         try {
-            await axios.delete(`${API_URL}/drivers/${id}`, config);
+            await api.delete(`/drivers/${id}`);
             fetchDrivers();
         } catch (e) { console.error(e); }
     };

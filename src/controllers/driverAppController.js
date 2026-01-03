@@ -96,10 +96,98 @@ async function updateOrderStatus(req, res) {
 
         res.json({ message: 'Estado actualizado', order_id: id, new_status: status });
 
+        // Notificar a n8n
+        const { notifyN8n } = require('../services/webhookService');
+        await notifyN8n('order_status_updated', {
+            order_id: id,
+            driver_id: driverId,
+            new_status: status,
+            proof: proof_of_delivery,
+            timestamp: new Date().toISOString()
+        });
+
     } catch (err) {
         console.error('Update Status Error:', err);
         res.status(500).json({ error: 'Error al actualizar la orden' });
     }
 }
 
-module.exports = { getMyRoute, updateOrderStatus };
+const { notifyN8n } = require('../services/webhookService');
+
+// Start Order (En Camino)
+async function startOrder(req, res) {
+    const { id } = req.params;
+    const driverId = req.driver.id;
+
+    try {
+        // 1. Get current Driver Location (from body or derived/cached - assumed passed in body for now)
+        const { lat, lng } = req.body;
+
+        // 2. Get Order Coordinates
+        const orderRes = await db.query(`
+            SELECT 
+                ST_X(coordinates::geometry) as target_lng, 
+                ST_Y(coordinates::geometry) as target_lat,
+                customer_name,
+                address_text,
+                notification_sent_starting
+            FROM orders 
+            WHERE id = $1 AND driver_id = $2
+        `, [id, driverId]);
+
+        if (orderRes.rowCount === 0) {
+            return res.status(404).json({ error: 'Orden no encontrada' });
+        }
+
+        const order = orderRes.rows[0];
+
+        // 3. Simple ETA Calculation (Euclidean for speed, or Haversine)
+        // Avg speed: 30km/h = 8.33 m/s
+        let etaMinutes = 15; // default fallback
+        let distanceKm = 0;
+
+        if (lat && lng && order.target_lat && order.target_lng) {
+            const R = 6371; // km
+            const dLat = (order.target_lat - lat) * Math.PI / 180;
+            const dLon = (order.target_lng - lng) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat * Math.PI / 180) * Math.cos(order.target_lat * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            distanceKm = R * c;
+
+            // Time = Dist / Speed. 30km/h
+            etaMinutes = Math.round((distanceKm / 30) * 60);
+            if (etaMinutes < 5) etaMinutes = 5; // Minimum buffer
+        }
+
+        // 4. Update DB
+        await db.query(`
+            UPDATE orders 
+            SET status = 'in_progress', 
+                started_at = NOW(),
+                notification_sent_starting = TRUE
+            WHERE id = $1
+        `, [id]);
+
+        // 5. Send Webhook (Only if not already sent, or force send)
+        // For "Start", we usually want to notify always if they click "Go"
+        await notifyN8n('driver_started', {
+            event: 'driver_started',
+            order_id: id,
+            driver_name: req.driver.name,
+            customer_name: order.customer_name,
+            address: order.address_text,
+            eta_minutes: etaMinutes,
+            distance_km: distanceKm.toFixed(2)
+        });
+
+        res.json({ message: 'Viaje iniciado', eta_minutes: etaMinutes });
+
+    } catch (err) {
+        console.error('Start Order Error:', err);
+        res.status(500).json({ error: 'Error al iniciar viaje' });
+    }
+}
+
+module.exports = { getMyRoute, updateOrderStatus, startOrder };

@@ -9,6 +9,8 @@ process.on('exit', (code) => {
     console.log(`Process exiting with code: ${code}`);
 });
 
+const path = require('path');
+
 process.on('uncaughtException', (err) => {
     console.error('Uncaught Exception:', err);
 });
@@ -40,13 +42,17 @@ app.get('/health', async (req, res) => {
 });
 
 const authController = require('./controllers/authController');
-app.post('/auth/login', authController.login);
+app.post('/v1/auth/login', authController.login);
+app.post('/v1/auth/register', authController.register); // Public Registration
 
 const driverAuthController = require('./controllers/driverAuthController');
 app.post('/v1/driver/auth/login', driverAuthController.login);
 
 // Protected Routes (Example)
 app.use('/v1', authMiddleware);
+
+const { checkSaaSStatus, checkDriverLimit } = require('./middleware/tenantLimiter');
+app.use('/v1', checkSaaSStatus); // Apply trial/suspension check to all API routes
 
 const dashboardController = require('./controllers/dashboardController');
 app.get('/v1/dashboard/stats', dashboardController.getStats);
@@ -60,6 +66,7 @@ const upload = multer({ dest: 'uploads/' });
 // app.post('/v1/driver/auth/login', driverAuthController.login); // Moved up
 app.get('/v1/driver/route', driverAppController.getMyRoute);
 app.post('/v1/driver/orders/:id/status', upload.single('photo'), driverAppController.updateOrderStatus);
+app.post('/v1/driver/orders/:id/start', driverAppController.startOrder);
 
 const telemetryController = require('./controllers/telemetryController');
 app.post('/v1/telemetry', telemetryController.receiveTelemetry);
@@ -88,12 +95,18 @@ const ordersController = require('./controllers/ordersController');
 app.post('/v1/orders', ordersController.createOrder);
 app.get('/v1/orders', ordersController.getOrders);
 app.put('/v1/orders/:id', ordersController.updateOrder);
+app.delete('/v1/orders/:id', ordersController.deleteOrder);
+app.post('/v1/orders/geocode', ordersController.geocodeOrderAddress);
+app.post('/v1/orders/optimize', ordersController.optimizeRouteHandler);
+app.post('/v1/orders/geocode', ordersController.geocodeOrderAddress);
 app.post('/v1/orders/optimize', ordersController.optimizeRouteHandler);
 app.post('/v1/orders/sequence', ordersController.saveRouteSequence);
+app.get('/v1/orders/loading-sheet', ordersController.getLoadingSheet); // New LIFO Route
 
 const adminController = require('./controllers/adminController');
 app.get('/v1/drivers', adminController.getDrivers);
-app.post('/v1/drivers', adminController.createDriver);
+app.get('/v1/drivers', adminController.getDrivers);
+app.post('/v1/drivers', checkDriverLimit, adminController.createDriver);
 app.put('/v1/drivers/:id', adminController.updateDriver);
 app.delete('/v1/drivers/:id', adminController.deleteDriver);
 
@@ -101,8 +114,21 @@ app.get('/v1/me', (req, res) => {
     res.json({
         message: `Hola, ${req.tenant.name}`,
         tenant_id: req.tenant.id,
-        config: req.tenant.config
+        config: req.tenant.config,
+        is_super_admin: req.tenant.is_super_admin
     });
+});
+
+const superAdminController = require('./controllers/superAdminController');
+app.get('/v1/admin/tenants', superAdminController.ensureSuperAdmin, superAdminController.getAllTenants);
+app.put('/v1/admin/tenants/:id', superAdminController.ensureSuperAdmin, superAdminController.updateTenant);
+
+// Serve Frontend Static Files
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Catch-All Route for SPA (Must be last)
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/dist', 'index.html'));
 });
 
 // Start Server

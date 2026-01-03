@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Building, MapPin, Save, Plus, Trash2, Edit2, X } from 'lucide-react';
+import { Building, MapPin, Save, Plus, Trash2, Edit2, X, Mail, Lock } from 'lucide-react';
 
 export default function Settings() {
     const [activeTab, setActiveTab] = useState('company');
@@ -9,6 +9,8 @@ export default function Settings() {
 
     // Company State
     const [companyName, setCompanyName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [companyLoading, setCompanyLoading] = useState(false);
 
     // Depots State
@@ -27,6 +29,7 @@ export default function Settings() {
         try {
             const res = await api.get('/company');
             setCompanyName(res.data.name || '');
+            setEmail(res.data.email || '');
         } catch (e) {
             console.error(e);
         }
@@ -35,9 +38,16 @@ export default function Settings() {
     const saveCompany = async () => {
         setCompanyLoading(true);
         try {
-            await api.put('/company', { name: companyName });
+            const payload = {
+                name: companyName,
+                email: email
+            };
+            if (password) payload.password = password;
+
+            await api.put('/company', payload);
             // Show toast or alert
-            alert('Configuración guardada');
+            alert('Configuración guardada (Credenciales actualizadas)');
+            setPassword(''); // Clear password field for security
         } catch (e) {
             console.error(e);
             alert('Error al guardar');
@@ -56,29 +66,36 @@ export default function Settings() {
         }
     };
 
-    const handleEditDepot = (depot) => {
-        setCurrentDepot(depot);
-        setDepotForm({
-            name: depot.name,
-            address_text: depot.address_text || '',
-            lat: depot.lat || '',
-            lng: depot.lng || ''
-        });
-        setDepotModal(true);
-    };
-
     const handleNewDepot = () => {
         setCurrentDepot(null);
         setDepotForm({ name: '', address_text: '', lat: '', lng: '' });
         setDepotModal(true);
     };
 
+    const handleEditDepot = (depot) => {
+        setCurrentDepot(depot);
+        setDepotForm({
+            name: depot.name,
+            address_text: depot.address_text || '',
+            lat: depot.coordinates?.coordinates[1] || '',
+            lng: depot.coordinates?.coordinates[0] || ''
+        });
+        setDepotModal(true);
+    };
+
     const saveDepot = async () => {
         try {
+            const payload = {
+                name: depotForm.name,
+                address_text: depotForm.address_text,
+                lat: parseFloat(depotForm.lat),
+                lng: parseFloat(depotForm.lng)
+            };
+
             if (currentDepot) {
-                await api.put(`/depots/${currentDepot.id}`, depotForm);
+                await api.put(`/depots/${currentDepot.id}`, payload);
             } else {
-                await api.post('/depots', depotForm);
+                await api.post('/depots', payload);
             }
             setDepotModal(false);
             fetchDepots();
@@ -89,7 +106,7 @@ export default function Settings() {
     };
 
     const deleteDepot = async (id) => {
-        if (!confirm('¿Eliminar depósito?')) return;
+        if (!window.confirm('¿Eliminar depósito?')) return;
         try {
             await api.delete(`/depots/${id}`);
             fetchDepots();
@@ -98,6 +115,7 @@ export default function Settings() {
         }
     };
 
+    // ... (render return start)
     return (
         <div className="p-6 h-full overflow-auto">
             <h1 className="text-2xl font-bold text-white mb-6">Configuración</h1>
@@ -108,7 +126,7 @@ export default function Settings() {
                     onClick={() => setActiveTab('company')}
                     className={`pb-2 px-4 text-sm font-medium transition-colors ${activeTab === 'company' ? 'border-b-2 border-primary-500 text-primary-400' : 'text-gray-400 hover:text-white'}`}
                 >
-                    Empresa
+                    Cuenta y Empresa
                 </button>
                 <button
                     onClick={() => setActiveTab('depots')}
@@ -120,23 +138,63 @@ export default function Settings() {
 
             {/* Company Settings */}
             {activeTab === 'company' && (
-                <div className="max-w-xl">
+                <div className="max-w-xl space-y-6">
+                    {/* Basic Info */}
                     <div className="bg-dark-800 p-6 rounded-xl border border-white/10">
+                        <h3 className="text-lg font-bold text-white mb-4">Información General</h3>
                         <div className="mb-4">
                             <label className="block text-gray-400 text-sm mb-2">Nombre de la Empresa</label>
-                            <input
-                                type="text"
-                                value={companyName}
-                                onChange={e => setCompanyName(e.target.value)}
-                                className="w-full bg-dark-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary-500"
-                            />
+                            <div className="relative">
+                                <Building className="absolute left-3 top-3.5 text-gray-500" size={18} />
+                                <input
+                                    type="text"
+                                    value={companyName}
+                                    onChange={e => setCompanyName(e.target.value)}
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg pl-10 p-3 text-white outline-none focus:border-primary-500"
+                                />
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Credentials */}
+                    <div className="bg-dark-800 p-6 rounded-xl border border-white/10">
+                        <h3 className="text-lg font-bold text-white mb-4">Credenciales de Acceso</h3>
+
+                        <div className="mb-4">
+                            <label className="block text-gray-400 text-sm mb-2">Correo Electrónico (Usuario)</label>
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-3.5 text-gray-500" size={18} />
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    autoComplete="email"
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg pl-10 p-3 text-white outline-none focus:border-primary-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-gray-400 text-sm mb-2">Nueva Contraseña (Opcional)</label>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3.5 text-gray-500" size={18} />
+                                <input
+                                    type="password"
+                                    placeholder="Dejar en blanco para mantener la actual"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    autoComplete="new-password"
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg pl-10 p-3 text-white outline-none focus:border-primary-500"
+                                />
+                            </div>
+                        </div>
+
                         <button
                             onClick={saveCompany}
                             disabled={companyLoading}
-                            className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            className="w-full bg-primary-500 hover:bg-primary-600 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
                         >
-                            <Save size={18} /> {companyLoading ? 'Guardando...' : 'Guardar Cambios'}
+                            <Save size={18} /> {companyLoading ? 'Guardando...' : 'Guardar Credenciales'}
                         </button>
                     </div>
                 </div>

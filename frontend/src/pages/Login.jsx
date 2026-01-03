@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Mail, Truck } from 'lucide-react';
-import axios from 'axios';
-
-const API_URL = 'http://localhost:3001'; // En prod leer de variable de entorno
+import api from '../services/api';
 
 const Login = () => {
+    // Force Rebuild 2025-12-27 v2
+    console.log('Login Component Loaded v2');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -17,7 +17,8 @@ const Login = () => {
         setError('');
 
         try {
-            const res = await axios.post(`${API_URL}/auth/login`, { email, password });
+            // Using the centralized api instance which handles base URL automatically
+            const res = await api.post('/auth/login', { email, password });
             const { token, user } = res.data;
 
             localStorage.setItem('token', token);
@@ -93,6 +94,12 @@ const Login = () => {
                         Iniciar Sesión
                     </motion.button>
                 </form>
+
+                <div className="mt-8 text-center text-sm text-gray-500 flex flex-col gap-2">
+                    <div>
+                        ¿No tienes cuenta? <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">Regístrate Gratis</Link>
+                    </div>
+                </div>
             </motion.div>
         </div>
     );

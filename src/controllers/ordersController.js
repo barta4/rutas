@@ -18,6 +18,24 @@ async function createOrder(req, res) {
 
     const tenantId = req.tenant.id; // From authMiddleware
 
+    // Auto-Geocode if coordinates are missing
+    let finalLat = lat;
+    let finalLng = lng;
+
+    if ((!finalLat || !finalLng) && address_text) {
+        try {
+            console.log(`Auto-geocoding address: ${address_text}`);
+            const geoResult = await geocodeAddress(address_text);
+            if (geoResult) {
+                finalLat = geoResult.coordinates.lat;
+                finalLng = geoResult.coordinates.lng;
+                console.log(`Geocoded to: ${finalLat}, ${finalLng}`);
+            }
+        } catch (e) {
+            console.warn('Auto-geocode failed:', e.message);
+        }
+    }
+
     try {
         const result = await db.query(`
             INSERT INTO orders (
@@ -35,7 +53,7 @@ async function createOrder(req, res) {
             ) VALUES (
                 $1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), 'pending', $8, $9, $10, NOW()
             ) RETURNING id, customer_name
-        `, [tenantId, customer_name, customer_phone, customer_cedula, address_text, lng, lat, driver_id, depot_id, delivery_sequence]);
+        `, [tenantId, customer_name, customer_phone, customer_cedula, address_text, finalLng, finalLat, driver_id, depot_id, delivery_sequence]);
 
         res.json({ message: 'Order created', order: result.rows[0] });
     } catch (err) {
@@ -106,6 +124,13 @@ async function updateOrder(req, res) {
         addField('driver_id', driver_id);
         addField('depot_id', depot_id);
         addField('delivery_sequence', delivery_sequence);
+
+        // Handle Coordinates Update
+        const { lat, lng } = req.body;
+        if (lat !== undefined && lng !== undefined) {
+            query += `, coordinates = ST_SetSRID(ST_MakePoint($${idx++}, $${idx++}), 4326)`;
+            params.push(lng, lat); // Point is (lng, lat)
+        }
 
         query += ` WHERE id = $${idx++} AND tenant_id = $${idx++} RETURNING id`;
         params.push(id, tenantId);
@@ -222,5 +247,75 @@ module.exports = {
     getOrders,
     updateOrder,
     optimizeRouteHandler,
-    saveRouteSequence
+    saveRouteSequence,
+    deleteOrder,
+    deleteOrder,
+    geocodeOrderAddress,
+    getLoadingSheet
 };
+
+async function getLoadingSheet(req, res) {
+    const tenantId = req.tenant.id;
+    const { driver_id } = req.query;
+
+    if (!driver_id) {
+        return res.status(400).json({ error: 'Driver ID required' });
+    }
+
+    try {
+        // LIFO: Reverse current sequence
+        // We want the LAST item in the route to be shown FIRST in the loading sheet (Bottom of truck)
+        // Actually, "Loading List" usually means: Order 1 is at back? 
+        // No, typically you load in Reverse Delivery Order.
+        // Delivery: 1, 2, 3 ...
+        // Load: 3, 2, 1 (3 goes in first, deep in truck).
+
+        const result = await db.query(`
+            SELECT 
+                delivery_sequence, 
+                customer_name, 
+                address_text, 
+                status
+            FROM orders 
+            WHERE tenant_id = $1 
+            AND driver_id = $2
+            AND status IN ('pending', 'in_progress')
+            ORDER BY delivery_sequence DESC NULLS LAST
+        `, [tenantId, driver_id]);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Loading Sheet Error:', err);
+        res.status(500).json({ error: 'Error generating loading sheet' });
+    }
+}
+
+async function deleteOrder(req, res) {
+    const tenantId = req.tenant.id;
+    const { id } = req.params;
+
+    try {
+        await db.query('DELETE FROM orders WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+        res.json({ message: 'Order deleted' });
+    } catch (err) {
+        console.error('Error deleting order:', err);
+        res.status(500).json({ error: 'Error deleting order' });
+    }
+}
+
+const { geocodeAddress } = require('../services/googleMapsService');
+
+async function geocodeOrderAddress(req, res) {
+    const { address } = req.body;
+    if (!address) return res.status(400).json({ error: 'Address is required' });
+
+    try {
+        const result = await geocodeAddress(address);
+        if (!result) return res.status(404).json({ error: 'Address not found on Maps' });
+
+        res.json(result);
+    } catch (err) {
+        console.error('Geocode Controller Error:', err);
+        res.status(500).json({ error: 'Geocoding failed' });
+    }
+}

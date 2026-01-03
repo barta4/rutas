@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import { Trash2, Plus, Zap, CheckCircle, AlertCircle } from 'lucide-react';
-
-const API_URL = 'http://localhost:3001';
 
 const Webhooks = () => {
     const [webhooks, setWebhooks] = useState([]);
@@ -17,10 +15,7 @@ const Webhooks = () => {
 
     const fetchWebhooks = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`${API_URL}/v1/webhooks`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get('/webhooks');
             setWebhooks(res.data);
         } catch (err) {
             console.error('Error cargando webhooks', err);
@@ -33,10 +28,7 @@ const Webhooks = () => {
         setError('');
 
         try {
-            const token = localStorage.getItem('token');
-            await axios.post(`${API_URL}/v1/webhooks`, { url, event_type: eventType }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.post('/webhooks', { url, event_type: eventType });
             setUrl('');
             fetchWebhooks();
         } catch (err) {
@@ -49,10 +41,7 @@ const Webhooks = () => {
     const handleDelete = async (id) => {
         if (!confirm('¿Estás seguro de eliminar este webhook?')) return;
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`${API_URL}/v1/webhooks/${id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await api.delete(`/webhooks/${id}`);
             fetchWebhooks();
         } catch (err) {
             console.error('Error eliminando webhook', err);

@@ -7,6 +7,9 @@ import Drivers from './pages/Drivers';
 import Orders from './pages/Orders';
 import Settings from './pages/Settings';
 import RouteSimulator from './pages/RouteSimulator';
+import Register from './pages/Register';
+import SuperAdmin from './pages/SuperAdmin';
+import ApiDocs from './pages/ApiDocs';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -18,6 +21,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
@@ -26,6 +30,8 @@ function App() {
         <Route path="orders" element={<Orders />} />
         <Route path="settings" element={<Settings />} />
         <Route path="simulator/:driverId" element={<RouteSimulator />} />
+        <Route path="super-admin" element={<SuperAdmin />} />
+        <Route path="developers" element={<ApiDocs />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" />} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Modal, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { Truck, Settings } from 'lucide-react-native';
 import useAuthStore from '../stores/authStore';
 import { getApiUrl, setApiUrl } from '../services/api';
@@ -30,6 +30,13 @@ export default function LoginScreen() {
 
     const handleSaveUrl = async () => {
         if (!serverUrl) return;
+
+        // Basic validation
+        if (!/^https?:\/\//i.test(serverUrl)) {
+            Alert.alert('URL Inválida', 'La URL debe comenzar con http:// o https://');
+            return;
+        }
+
         try {
             await setApiUrl(serverUrl);
             setShowSettings(false);
@@ -40,7 +47,10 @@ export default function LoginScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.container}
+        >
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.settingsButton}
@@ -132,7 +142,7 @@ export default function LoginScreen() {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
 

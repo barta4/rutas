@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "555224ec-b5da-4e7e-8740-c3ec2fbb5e28"
+      }
+    },
+    "android": {
+      "package": "com.urufileuruguay.rutas"
+    }
+  }
+}

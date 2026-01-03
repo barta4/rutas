@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "GliUY",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -20,13 +20,36 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.logistica.app",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
+      "foregroundServiceTypes": [
+        "location"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Logistica to use your location."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5a9a084d-fa18-42e4-b4be-0a9c3d8f88ee"
+      }
+    }
   }
 }
