@@ -1,6 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 const db = require('./config/db');
+
+if (!process.env.DATABASE_URL) {
+    console.error('❌ Error: DATABASE_URL no está definida en el archivo .env');
+    console.error(' Asegúrate de haber creado el archivo .env en la raíz del proyecto.');
+    process.exit(1);
+}
 
 const initSql = fs.readFileSync(path.join(__dirname, 'database/init.sql')).toString();
 
