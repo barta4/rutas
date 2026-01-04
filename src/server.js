@@ -62,7 +62,19 @@ app.get('/v1/dashboard/map-data', dashboardController.getMapData);
 // Driver App Routes
 const driverAppController = require('./controllers/driverAppController');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+// Configure Multer Storage to keep extensions
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        // Extract extension from mimetype (e.g. image/jpeg -> .jpeg)
+        const ext = file.mimetype.split('/')[1] || 'jpg';
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + '.' + ext)
+    }
+});
+const upload = multer({ storage: storage });
 
 // app.post('/v1/driver/auth/login', driverAuthController.login); // Moved up
 app.get('/v1/driver/route', driverAppController.getMyRoute);
