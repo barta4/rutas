@@ -81,19 +81,22 @@ async function sendMessage(baseURL, token, conversationId, message) {
 // Main Public Method
 async function notifyStatusUpdate(tenantId, order, status) {
     const config = await getConfig(tenantId);
-    if (!config) return; // Not integrated
+    if (!config) {
+        console.log(`[CHATWOOT] No config found for tenant ${tenantId}`);
+        return;
+    }
 
     const { url, api_token, inbox_id } = config;
-    if (!url || !api_token || !inbox_id) return;
+    if (!url || !api_token || !inbox_id) {
+        console.log(`[CHATWOOT] Incomplete config for tenant ${tenantId}:`, { url_exists: !!url, token_exists: !!api_token, inbox: inbox_id });
+        return;
+    }
 
-    // Contact info from order (assuming order has customer_name/phone/email columns or logic to get them)
-    // Note: 'orders' table structure typically has 'customer_name' and 'address_text'. 
-    // Phone usually comes from 'customer' table if normalized, or stored in order. 
-    // IMPORTANT: Assuming 'customer_phone' exists in order object passed here, or query it.
+    console.log(`[CHATWOOT] Starting notification for Order #${order.id} Status: ${status}`);
 
     // Fallback if no phone/email
     if (!order.customer_phone && !order.customer_email) {
-        console.log('[Chatwoot] Skipping: No phone/email for order', order.id);
+        console.log('[CHATWOOT] Skipping: No phone/email for order', order.id);
         return;
     }
 
@@ -103,11 +106,20 @@ async function notifyStatusUpdate(tenantId, order, status) {
         phone: order.customer_phone
     };
 
+    console.log('[CHATWOOT] Seeking Contact:', customer);
     const contactId = await findOrCreateContact(url, api_token, inbox_id, customer);
-    if (!contactId) return;
+    if (!contactId) {
+        console.log('[CHATWOOT] Failed to find/create contact');
+        return;
+    }
+    console.log('[CHATWOOT] Contact ID:', contactId);
 
     const conversationId = await createConversation(url, api_token, inbox_id, contactId);
-    if (!conversationId) return;
+    if (!conversationId) {
+        console.log('[CHATWOOT] Failed to create conversation');
+        return;
+    }
+    console.log('[CHATWOOT] Conversation ID:', conversationId);
 
     let message = '';
     if (status === 'in_progress') {
@@ -119,7 +131,10 @@ async function notifyStatusUpdate(tenantId, order, status) {
     }
 
     if (message) {
+        console.log('[CHATWOOT] Sending Message:', message);
         await sendMessage(url, api_token, conversationId, message);
+    } else {
+        console.log('[CHATWOOT] No message defined for status:', status);
     }
 }
 

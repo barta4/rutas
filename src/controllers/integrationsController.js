@@ -19,6 +19,8 @@ async function saveIntegration(req, res) {
             DO UPDATE SET config = $3, is_active = $4, updated_at = NOW()
         `, [tenant_id, type, config, is_active]);
 
+        console.log(`[INTEGRATION] Saved ${type} for tenant ${tenant_id}`, { is_active, configKeys: Object.keys(config) });
+
         res.json({ message: 'Integración guardada exitosamente' });
 
         // Optional: Trigger query test immediately in background
