@@ -195,6 +195,19 @@ async function startOrder(req, res) {
             distance_km: distanceKm.toFixed(2)
         });
 
+        // Notificar a Chatwoot (Async) - NEW
+        const chatwootService = require('../services/chatwootService');
+        // Need to refetch or construct order object with phone
+        // orderRes above select 'customer_name', 'address_text' but maybe not phone/email.
+        // Let's refetch to be safe or update the query above.
+        // Updating query is better but let's just refetch for safety and consistency with updateStatus.
+        const fullOrderRes = await db.query('SELECT * FROM orders WHERE id = $1', [id]);
+        if (fullOrderRes.rowCount > 0 && req.driver && req.driver.tenant_id) {
+            console.log('[StartOrder] Triggering Chatwoot for order', id);
+            chatwootService.notifyStatusUpdate(req.driver.tenant_id, fullOrderRes.rows[0], 'in_progress')
+                .catch(err => console.error('Chatwoot Async Error (Start):', err));
+        }
+
         res.json({ message: 'Viaje iniciado', eta_minutes: etaMinutes });
 
     } catch (err) {
