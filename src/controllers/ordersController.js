@@ -101,7 +101,7 @@ async function updateOrder(req, res) {
     const { id } = req.params;
     const {
         customer_name, address_text, customer_phone, customer_cedula,
-        driver_id, depot_id, delivery_sequence
+        driver_id, depot_id, delivery_sequence, status
     } = req.body;
 
     try {
@@ -124,6 +124,7 @@ async function updateOrder(req, res) {
         addField('driver_id', driver_id);
         addField('depot_id', depot_id);
         addField('delivery_sequence', delivery_sequence);
+        addField('status', status);
 
         // Handle Coordinates Update
         const { lat, lng } = req.body;
