@@ -247,7 +247,8 @@ export default function Integrations() {
                             )}
 
                             {/* Odoo / Dolibarr Specific Fields */}
-                            {['odoo', 'dolibarr'].includes(selectedIntegration.id) && (
+                            {/* Odoo Specific Fields */}
+                            {selectedIntegration.id === 'odoo' && (
                                 <>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
@@ -255,7 +256,8 @@ export default function Integrations() {
                                             <input
                                                 name="db"
                                                 className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder={selectedIntegration.id === 'odoo' ? 'db_name' : 'No requerido'}
+                                                placeholder="db_name"
+                                                required
                                             />
                                         </div>
                                         <div>
@@ -264,11 +266,12 @@ export default function Integrations() {
                                                 name="user"
                                                 className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                                 placeholder="admin@..."
+                                                required
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key / Contraseña</label>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Contraseña / API Key</label>
                                         <input
                                             name="api_key"
                                             type="password"
@@ -278,6 +281,23 @@ export default function Integrations() {
                                         />
                                     </div>
                                 </>
+                            )}
+
+                            {/* Dolibarr Specific Fields */}
+                            {selectedIntegration.id === 'dolibarr' && (
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Dolibarr API Key</label>
+                                    <input
+                                        name="api_key"
+                                        type="password"
+                                        className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                        placeholder="Generada en Perfil de Usuario"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Encuéntrala en: Usuario {'>'} Pestaña API Key.
+                                    </p>
+                                </div>
                             )}
 
                             <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
