@@ -7,7 +7,7 @@ async function saveIntegration(req, res) {
     const { config, is_active } = req.body;
     const tenant_id = req.tenant.id;
 
-    if (!['dolibarr', 'odoo'].includes(type)) {
+    if (!['dolibarr', 'odoo', 'woocommerce', 'wix', 'chatwoot'].includes(type)) {
         return res.status(400).json({ error: 'Tipo de integración no soportado' });
     }
 
