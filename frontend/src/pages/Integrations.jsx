@@ -239,153 +239,152 @@ export default function Integrations() {
 
                         <form onSubmit={handleSaveConfig} className="space-y-4">
                             <div>
-                                <div>
-                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">
-                                        {selectedIntegration.id === 'chatwoot' ? 'URL de Chatwoot' : 'URL de la Tienda / ERP'}
-                                    </label>
-                                    <input
-                                        name="url"
-                                        className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                        placeholder={selectedIntegration.id === 'chatwoot' ? 'https://chat.miempresa.com' : (selectedIntegration.id === 'woocommerce' ? 'https://mitienda.com' : 'https://mi-empresa.odoo.com')}
-                                        required
-                                    />
-                                </div>
+                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">
+                                    {selectedIntegration.id === 'chatwoot' ? 'URL de Chatwoot' : 'URL de la Tienda / ERP'}
+                                </label>
+                                <input
+                                    name="url"
+                                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                    placeholder={selectedIntegration.id === 'chatwoot' ? 'https://chat.miempresa.com' : (selectedIntegration.id === 'woocommerce' ? 'https://mitienda.com' : 'https://mi-empresa.odoo.com')}
+                                    required
+                                />
+                            </div>
 
-                                {/* WooCommerce Specific Fields */}
-                                {selectedIntegration.id === 'woocommerce' && (
-                                    <>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Key (CK)</label>
-                                            <input
-                                                name="consumer_key"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="ck_xxxxxxxxxxxxxxxx"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Secret (CS)</label>
-                                            <input
-                                                name="consumer_secret"
-                                                type="password"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="cs_xxxxxxxxxxxxxxxx"
-                                                required
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Odoo / Dolibarr Specific Fields */}
-                                {/* Odoo Specific Fields */}
-                                {selectedIntegration.id === 'odoo' && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos</label>
-                                                <input
-                                                    name="db"
-                                                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                    placeholder="db_name"
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Usuario / Email</label>
-                                                <input
-                                                    name="user"
-                                                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                    placeholder="admin@..."
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Contraseña / API Key</label>
-                                            <input
-                                                name="api_key"
-                                                type="password"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="••••••••••••"
-                                                required
-                                            />
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Dolibarr Specific Fields */}
-                                {selectedIntegration.id === 'dolibarr' && (
+                            {/* WooCommerce Specific Fields */}
+                            {selectedIntegration.id === 'woocommerce' && (
+                                <>
                                     <div>
-                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Dolibarr API Key</label>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Key (CK)</label>
+                                        <input
+                                            name="consumer_key"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="ck_xxxxxxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Secret (CS)</label>
+                                        <input
+                                            name="consumer_secret"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="cs_xxxxxxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Odoo / Dolibarr Specific Fields */}
+                            {/* Odoo Specific Fields */}
+                            {selectedIntegration.id === 'odoo' && (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos</label>
+                                            <input
+                                                name="db"
+                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                                placeholder="db_name"
+                                                required
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Usuario / Email</label>
+                                            <input
+                                                name="user"
+                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                                placeholder="admin@..."
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Contraseña / API Key</label>
                                         <input
                                             name="api_key"
                                             type="password"
                                             className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                            placeholder="Generada en Perfil de Usuario"
+                                            placeholder="••••••••••••"
                                             required
                                         />
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Encuéntrala en: Usuario {'>'} Pestaña API Key.
-                                        </p>
                                     </div>
-                                )}
+                                </>
+                            )}
 
-                                {/* Wix Specific Fields */}
-                                {selectedIntegration.id === 'wix' && (
-                                    <>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Wix Site ID</label>
-                                            <input
-                                                name="site_id"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key</label>
-                                            <input
-                                                name="api_key"
-                                                type="password"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="La clave obtenida en Wix Developers"
-                                                required
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                            {/* Dolibarr Specific Fields */}
+                            {selectedIntegration.id === 'dolibarr' && (
+                                <div>
+                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Dolibarr API Key</label>
+                                    <input
+                                        name="api_key"
+                                        type="password"
+                                        className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                        placeholder="Generada en Perfil de Usuario"
+                                        required
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Encuéntrala en: Usuario {'>'} Pestaña API Key.
+                                    </p>
+                                </div>
+                            )}
 
-                                {/* Chatwoot Specific Fields */}
-                                {selectedIntegration.id === 'chatwoot' && (
-                                    <>
-                                        {/* URL field is handled by the generic input above */}
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Access Token</label>
-                                            <input
-                                                name="api_token"
-                                                type="password"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="Token de Bot o Usuario"
-                                                required
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Inbox ID</label>
-                                            <input
-                                                name="inbox_id"
-                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                                placeholder="Ej: 1"
-                                                required
-                                            />
-                                        </div>
-                                    </>
-                                )}
+                            {/* Wix Specific Fields */}
+                            {selectedIntegration.id === 'wix' && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Wix Site ID</label>
+                                        <input
+                                            name="site_id"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key</label>
+                                        <input
+                                            name="api_key"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="La clave obtenida en Wix Developers"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
 
-                                <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
+                            {/* Chatwoot Specific Fields */}
+                            {selectedIntegration.id === 'chatwoot' && (
+                                <>
+                                    {/* URL field is handled by the generic input above */}
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Access Token</label>
+                                        <input
+                                            name="api_token"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="Token de Bot o Usuario"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Inbox ID</label>
+                                        <input
+                                            name="inbox_id"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="Ej: 1"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
 
-                                <button className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl mt-4 flex items-center justify-center gap-2">
-                                    <CheckCircle size={18} /> Guardar y Activar
-                                </button>
+                            <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
+
+                            <button className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl mt-4 flex items-center justify-center gap-2">
+                                <CheckCircle size={18} /> Guardar y Activar
+                            </button>
                         </form>
                     </div>
                 </div>
