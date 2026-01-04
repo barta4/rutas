@@ -41,6 +41,16 @@ export default function Integrations() {
             buttonText: 'Conectar'
         },
         {
+            id: 'chatwoot',
+            category: 'support',
+            name: 'Chatwoot Mensajería',
+            description: 'Envía alertas por WhatsApp/Web cuando el pedido cambia de estado.',
+            icon: <MessageCircle size={24} className="text-blue-400" />,
+            status: 'available',
+            action: 'configure',
+            buttonText: 'Configurar'
+        },
+        {
             id: 'odoo',
             category: 'erp',
             name: 'Odoo Connector',
