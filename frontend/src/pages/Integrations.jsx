@@ -115,8 +115,8 @@ export default function Integrations() {
             // Reuse api_key for wix api key
 
             // Chatwoot fields
-            api_token: form.api_token?.value, // Chatwoot API token
-            inbox_id: form.inbox_id?.value   // Chatwoot Inbox ID
+            api_token: form.api_token?.value,
+            inbox_id: form.inbox_id?.value
         };
 
         try {
