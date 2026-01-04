@@ -330,7 +330,7 @@ async function notifyStatusUpdate(tenantId, order, status) {
         message = `🚚 Hola ${order.customer_name}, tu pedido #${order.id} está en camino. Prepárate para recibirlo pronto.`;
     } else if (status === 'approaching') {
         message = `📍 Hola ${order.customer_name}, el conductor está a menos de 500m de tu domicilio. ¡Saldrá en breve!`;
-    } else if (status === 'delivered') {
+    } else if (status === 'delivered' || status === 'completed') {
         message = `✅ Entregado. Tu pedido #${order.id} ha llegado correctamente. ¡Gracias por confiar en nosotros!`;
     } else if (status === 'failed') {
         message = `⚠️ Hola ${order.customer_name}, intentamos entregar tu pedido #${order.id} pero no pudimos. Nos pondremos en contacto contigo.`;
