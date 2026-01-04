@@ -276,26 +276,31 @@ async function notifyStatusUpdate(tenantId, order, status) {
         return;
     }
 
+    // Helper E.164
+    const formatPhone = (p) => {
+        if (!p) return null;
+        let phone = p.replace(/\D/g, '');
+        if (phone.startsWith('09')) phone = '598' + phone.substring(1);
+        if (!phone.startsWith('+')) phone = '+' + phone;
+        return phone;
+    };
+
+    const formattedPhone = formatPhone(order.customer_phone);
+
     // 1. Resolve Contact
     let contactId = null;
     if (order.customer_email) contactId = await findContact(order.customer_email);
-    if (!contactId && order.customer_phone) contactId = await findContact(order.customer_phone);
+
+    // Search with formatted phone if email didn't work
+    if (!contactId && formattedPhone) contactId = await findContact(formattedPhone);
 
     if (!contactId) {
         console.log('[CHATWOOT] Contact not found, creating new...');
 
-        // E.164 Formatting (Duplicated here for safety)
-        let phone = order.customer_phone;
-        if (phone) {
-            phone = phone.replace(/\D/g, '');
-            if (phone.startsWith('09')) phone = '598' + phone.substring(1);
-            if (!phone.startsWith('+')) phone = '+' + phone;
-        }
-
         const contactData = {
             name: order.customer_name || 'Cliente',
             email: order.customer_email,
-            phone_number: phone
+            phone_number: formattedPhone
         };
         contactId = await createContact(contactData);
     }
