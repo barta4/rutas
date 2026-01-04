@@ -11,7 +11,6 @@ import Register from './pages/Register';
 import SuperAdmin from './pages/SuperAdmin';
 import ApiDocs from './pages/ApiDocs';
 import Integrations from './pages/Integrations';
-import Integrations from './pages/Integrations';
 import ChatwootWidget from './pages/ChatwootWidget';
 import Layout from './components/Layout';
 
