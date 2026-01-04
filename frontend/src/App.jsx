@@ -11,6 +11,8 @@ import Register from './pages/Register';
 import SuperAdmin from './pages/SuperAdmin';
 import ApiDocs from './pages/ApiDocs';
 import Integrations from './pages/Integrations';
+import Integrations from './pages/Integrations';
+import ChatwootWidget from './pages/ChatwootWidget';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -23,6 +25,7 @@ function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/chatwoot-widget" element={<ProtectedRoute><ChatwootWidget /></ProtectedRoute>} />
 
       <Route path="/dashboard" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
