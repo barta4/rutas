@@ -28,6 +28,18 @@ export default function Integrations() {
             icon: <ShoppingBag size={24} className="text-purple-400" />,
             status: 'available',
             action: 'configure',
+            status: 'available',
+            action: 'configure',
+            buttonText: 'Conectar'
+        },
+        {
+            id: 'wix',
+            category: 'ecommerce',
+            name: 'Wix Stores',
+            description: 'Conecta tu tienda Wix. Importa pedidos pagados al instante.',
+            icon: <ShoppingBag size={24} className="text-yellow-400" />,
+            status: 'available',
+            action: 'configure',
             buttonText: 'Conectar'
         },
         {
@@ -89,7 +101,10 @@ export default function Integrations() {
             user: form.user?.value,
             // WooCommerce fields
             consumer_key: form.consumer_key?.value,
-            consumer_secret: form.consumer_secret?.value
+            consumer_secret: form.consumer_secret?.value,
+            // Wix fields
+            site_id: form.site_id?.value,
+            // Reuse api_key for wix api key
         };
 
         try {
@@ -298,6 +313,31 @@ export default function Integrations() {
                                         Encuéntrala en: Usuario {'>'} Pestaña API Key.
                                     </p>
                                 </div>
+                            )}
+
+                            {/* Wix Specific Fields */}
+                            {selectedIntegration.id === 'wix' && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Wix Site ID</label>
+                                        <input
+                                            name="site_id"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key</label>
+                                        <input
+                                            name="api_key"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="La clave obtenida en Wix Developers"
+                                            required
+                                        />
+                                    </div>
+                                </>
                             )}
 
                             <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>

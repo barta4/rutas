@@ -4,7 +4,8 @@ const dolibarr = require('./dolibarr');
 
 const REGISTRY = {
     'dolibarr': dolibarr,
-    'woocommerce': require('./woocommerce')
+    'woocommerce': require('./woocommerce'),
+    'wix': require('./wix')
 };
 
 async function runScheduler() {
