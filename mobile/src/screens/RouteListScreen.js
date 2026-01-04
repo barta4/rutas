@@ -238,15 +238,18 @@ export default function RouteListScreen() {
                 });
             }
 
-            await api.post(`/driver/orders/${selectedOrder.id}/status`, formData);
+            await api.post(`/driver/orders/${selectedOrder.id}/status`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
 
             setModalVisible(false);
             Alert.alert("Éxito", "Orden completada correctamente.");
             fetchRoute();
 
         } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "No se pudo completar la orden.");
+            console.error("Upload Error:", e);
+            const serverMsg = e.response?.data?.error || e.message;
+            Alert.alert("Error Upload", `Fallo al subir: ${serverMsg} (${e.response?.status})`);
         } finally {
             setLoading(false);
         }
