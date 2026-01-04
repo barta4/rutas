@@ -378,15 +378,24 @@ export default function Orders() {
                                         <h3 className="text-sm text-gray-400 uppercase tracking-wide mb-2">Evidencia Fotográfica</h3>
                                         {selectedOrder.proof_of_delivery?.photos?.length > 0 ? (
                                             <div className="grid gap-2">
-                                                {selectedOrder.proof_of_delivery.photos.map((url, i) => (
-                                                    <img
-                                                        key={i}
-                                                        // Use relative path since Nginx proxies /uploads
-                                                        src={`/uploads/${url.split('/').pop()}`}
-                                                        className="w-full rounded-lg border border-white/10"
-                                                        alt="Prueba de entrega"
-                                                    />
-                                                ))}
+                                                {selectedOrder.proof_of_delivery.photos.map((url, i) => {
+                                                    // Ensure we use the proxied path /v1/uploads instead of root /uploads
+                                                    // Backend saves as /uploads/name.jpg. We strip /uploads/ and append to /v1/uploads/
+                                                    const filename = url.split('/').pop();
+                                                    /* Use api.defaults.baseURL if available or hardcode /v1 relative path for prod */
+                                                    const src = import.meta.env.PROD
+                                                        ? `/v1/uploads/${filename}`
+                                                        : `http://localhost:3001/v1/uploads/${filename}`;
+
+                                                    return (
+                                                        <img
+                                                            key={i}
+                                                            src={src}
+                                                            className="w-full rounded-lg border border-white/10"
+                                                            alt="Prueba de entrega"
+                                                        />
+                                                    );
+                                                })}
                                             </div>
                                         ) : (
                                             <div className="h-40 bg-dark-900 rounded-lg flex items-center justify-center text-gray-500 flex-col gap-2">

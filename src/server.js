@@ -24,8 +24,9 @@ const PORT = process.env.PORT || 3000;
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Handle multiparts
-app.use('/uploads', express.static('uploads')); // Serve images
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static('uploads')); // Local/Direct access
+app.use('/v1/uploads', express.static('uploads')); // Proxy-friendly access through /v1
 
 // Ensure uploads dir exists
 const fs = require('fs-extra');
