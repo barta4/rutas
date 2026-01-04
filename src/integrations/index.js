@@ -3,8 +3,8 @@ const db = require('../config/db');
 const dolibarr = require('./dolibarr');
 
 const REGISTRY = {
-    'dolibarr': dolibarr
-    // 'odoo': require('./odoo')
+    'dolibarr': dolibarr,
+    'woocommerce': require('./woocommerce')
 };
 
 async function runScheduler() {

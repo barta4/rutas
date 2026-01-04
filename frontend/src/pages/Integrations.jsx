@@ -26,9 +26,9 @@ export default function Integrations() {
             name: 'WooCommerce',
             description: 'Sincroniza pedidos automáticamente desde tu tienda WordPress.',
             icon: <ShoppingBag size={24} className="text-purple-400" />,
-            status: 'installed',
-            action: 'docs',
-            buttonText: 'Ver Guía'
+            status: 'available',
+            action: 'configure',
+            buttonText: 'Conectar'
         },
         {
             id: 'odoo',
@@ -83,9 +83,13 @@ export default function Integrations() {
         const form = e.target;
         const config = {
             url: form.url.value,
-            api_key: form.api_key.value,
-            db: form.db?.value, // Optional for some
-            user: form.user?.value
+            // Common fields logic
+            api_key: form.api_key?.value,
+            db: form.db?.value,
+            user: form.user?.value,
+            // WooCommerce fields
+            consumer_key: form.consumer_key?.value,
+            consumer_secret: form.consumer_secret?.value
         };
 
         try {
@@ -208,44 +212,75 @@ export default function Integrations() {
 
                         <form onSubmit={handleSaveConfig} className="space-y-4">
                             <div>
-                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">URL del Servidor</label>
+                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">URL de la Tienda / ERP</label>
                                 <input
                                     name="url"
                                     className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                    placeholder="https://mi-empresa.odoo.com"
+                                    placeholder={selectedIntegration.id === 'woocommerce' ? 'https://mitienda.com' : 'https://mi-empresa.odoo.com'}
                                     required
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos (Odoo)</label>
-                                    <input
-                                        name="db"
-                                        className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                        placeholder="db_name (Solo Odoo)"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Usuario / Email</label>
-                                    <input
-                                        name="user"
-                                        className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                        placeholder="admin@..."
 
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key / Contraseña</label>
-                                <input
-                                    name="api_key"
-                                    type="password"
-                                    className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
-                                    placeholder="••••••••••••"
-                                    required
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
-                            </div>
+                            {/* WooCommerce Specific Fields */}
+                            {selectedIntegration.id === 'woocommerce' && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Key (CK)</label>
+                                        <input
+                                            name="consumer_key"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="ck_xxxxxxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Consumer Secret (CS)</label>
+                                        <input
+                                            name="consumer_secret"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="cs_xxxxxxxxxxxxxxxx"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Odoo / Dolibarr Specific Fields */}
+                            {['odoo', 'dolibarr'].includes(selectedIntegration.id) && (
+                                <>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Base de Datos</label>
+                                            <input
+                                                name="db"
+                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                                placeholder={selectedIntegration.id === 'odoo' ? 'db_name' : 'No requerido'}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Usuario / Email</label>
+                                            <input
+                                                name="user"
+                                                className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                                placeholder="admin@..."
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Key / Contraseña</label>
+                                        <input
+                                            name="api_key"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="••••••••••••"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
 
                             <button className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl mt-4 flex items-center justify-center gap-2">
                                 <CheckCircle size={18} /> Guardar y Activar
