@@ -28,8 +28,6 @@ export default function Integrations() {
             icon: <ShoppingBag size={24} className="text-purple-400" />,
             status: 'available',
             action: 'configure',
-            status: 'available',
-            action: 'configure',
             buttonText: 'Conectar'
         },
         {
