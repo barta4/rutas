@@ -84,9 +84,15 @@ async function getOrders(req, res) {
         if (status) {
             query += ' AND o.status = $2';
             params.push(status);
+        } else {
+            // Default View: Hide completed orders older than 24h to keep dashboard clean
+            query += ` AND (
+                o.status NOT IN ('completed', 'delivered', 'failed') 
+                OR (o.updated_at IS NOT NULL AND o.updated_at > NOW() - INTERVAL '24 hours')
+            )`;
         }
 
-        query += ' ORDER BY o.created_at DESC LIMIT 100';
+        query += ' ORDER BY o.created_at DESC LIMIT 200';
 
         const result = await db.query(query, params);
         res.json(result.rows);
