@@ -130,6 +130,8 @@ const { notifyN8n } = require('../services/webhookService');
 // Start Order (En Camino)
 async function startOrder(req, res) {
     const { id } = req.params;
+    console.log(`[StartOrder] INCOMING REQUEST for Order ID: ${id}`); // Log immediately
+
     const driverId = req.driver.id;
 
     try {

@@ -272,32 +272,57 @@ export default function RouteListScreen() {
 
         // 2. Si no, avisar al backend (En Camino) -> Webhook
         try {
-            // Optimistic Update
-            const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
-            setRoute(updated);
-
-            let loc = null;
+            // 2. Si no, avisar al backend (En Camino)
+            setLoading(true); // Show spinner
             try {
-                const { coords } = await Location.getCurrentPositionAsync({});
-                loc = coords;
+                let loc = null;
+                try {
+                    // Determine location first
+                    const { coords } = await Location.getCurrentPositionAsync({});
+                    loc = coords;
+                } catch (e) {
+                    console.warn("No location for start order");
+                }
+
+                console.log(`Debug: Starting order ${item.id} at ${loc?.latitude}, ${loc?.longitude}`);
+
+                // AWAIT THE CALL - DO NOT OPEN MAP UNTIL SENT
+                const response = await api.post(`/driver/orders/${item.id}/start`, {
+                    lat: loc?.latitude,
+                    lng: loc?.longitude
+                });
+
+                // DEBUG ALERT for User (Temporary)
+                Alert.alert("Éxito", `Servidor respondió: ${response.status}`, [
+                    {
+                        text: "Abrir Mapa",
+                        onPress: () => {
+                            // Update UI only after success
+                            const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
+                            setRoute(updated);
+
+                            // Open Maps
+                            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
+                        }
+                    }
+                ]);
+
             } catch (e) {
-                console.warn("No location for start order");
+                console.error("Error starting order", e);
+                Alert.alert("Error de Conexión", `No se pudo notificar al servidor: ${e.message}. \n¿Abrir mapa de todas formas?`, [
+                    { text: "Cancelar", style: "cancel" },
+                    { text: "Sí, ir igual", onPress: () => Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`) }
+                ]);
+            } finally {
+                setLoading(false);
             }
-
-            await api.post(`/driver/orders/${item.id}/start`, {
-                lat: loc?.latitude,
-                lng: loc?.longitude
-            });
-
-            // 3. Abrir Mapas
-            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
 
         } catch (e) {
             console.error("Error starting order", e);
-            Alert.alert("Error", "No se pudo notificar el inicio de viaje, pero abriendo mapas...", [
-                { text: "OK", onPress: () => Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`) }
-            ]);
-            // Revert on serious failure? Maybe not needed for UX speed.
+            Alert.alert("Error Start", `Fallo al iniciar: ${e.message}`);
+
+            // Still open map?
+            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
         }
     };
 
