@@ -79,74 +79,75 @@ async function sendMessage(baseURL, token, conversationId, message) {
 }
 
 // Main Public Method
-let configRaw = await getConfig(tenantId);
-if (!configRaw) {
-    console.log(`[CHATWOOT] No config found for tenant ${tenantId}`);
-    return;
-}
-
-let config = configRaw;
-if (typeof config === 'string') {
-    try {
-        config = JSON.parse(config);
-    } catch (e) {
-        console.error('[CHATWOOT] Config is invalid JSON string:', configRaw);
+async function notifyStatusUpdate(tenantId, order, status) {
+    let configRaw = await getConfig(tenantId);
+    if (!configRaw) {
+        console.log(`[CHATWOOT] No config found for tenant ${tenantId}`);
         return;
     }
-}
 
-console.log(`[CHATWOOT] Loaded config for ${tenantId}:`, typeof config, JSON.stringify(config));
+    let config = configRaw;
+    if (typeof config === 'string') {
+        try {
+            config = JSON.parse(config);
+        } catch (e) {
+            console.error('[CHATWOOT] Config is invalid JSON string:', configRaw);
+            return;
+        }
+    }
 
-const { url, api_token, inbox_id } = config;
-if (!url || !api_token || !inbox_id) {
-    console.log(`[CHATWOOT] Incomplete config for tenant ${tenantId}:`, { url_exists: !!url, token_exists: !!api_token, inbox: inbox_id });
-    return;
-}
+    console.log(`[CHATWOOT] Loaded config for ${tenantId}:`, typeof config, JSON.stringify(config));
 
-console.log(`[CHATWOOT] Starting notification for Order #${order.id} Status: ${status}`);
+    const { url, api_token, inbox_id } = config;
+    if (!url || !api_token || !inbox_id) {
+        console.log(`[CHATWOOT] Incomplete config for tenant ${tenantId}:`, { url_exists: !!url, token_exists: !!api_token, inbox: inbox_id });
+        return;
+    }
 
-// Fallback if no phone/email
-if (!order.customer_phone && !order.customer_email) {
-    console.log('[CHATWOOT] Skipping: No phone/email for order', order.id);
-    return;
-}
+    console.log(`[CHATWOOT] Starting notification for Order #${order.id} Status: ${status}`);
 
-const customer = {
-    name: order.customer_name,
-    email: order.customer_email,
-    phone: order.customer_phone
-};
+    // Fallback if no phone/email
+    if (!order.customer_phone && !order.customer_email) {
+        console.log('[CHATWOOT] Skipping: No phone/email for order', order.id);
+        return;
+    }
 
-console.log('[CHATWOOT] Seeking Contact:', customer);
-const contactId = await findOrCreateContact(url, api_token, inbox_id, customer);
-if (!contactId) {
-    console.log('[CHATWOOT] Failed to find/create contact');
-    return;
-}
-console.log('[CHATWOOT] Contact ID:', contactId);
+    const customer = {
+        name: order.customer_name,
+        email: order.customer_email,
+        phone: order.customer_phone
+    };
 
-const conversationId = await createConversation(url, api_token, inbox_id, contactId);
-if (!conversationId) {
-    console.log('[CHATWOOT] Failed to create conversation');
-    return;
-}
-console.log('[CHATWOOT] Conversation ID:', conversationId);
+    console.log('[CHATWOOT] Seeking Contact:', customer);
+    const contactId = await findOrCreateContact(url, api_token, inbox_id, customer);
+    if (!contactId) {
+        console.log('[CHATWOOT] Failed to find/create contact');
+        return;
+    }
+    console.log('[CHATWOOT] Contact ID:', contactId);
 
-let message = '';
-if (status === 'in_progress') {
-    message = `🚚 Hola ${customer.name}, tu pedido #${order.id} está en camino. Prepárate para recibirlo pronto.`;
-} else if (status === 'delivered') {
-    message = `✅ Entregado. Tu pedido #${order.id} ha llegado correctamente. ¡Gracias por confiar en nosotros!`;
-} else if (status === 'failed') {
-    message = `⚠️ Hola ${customer.name}, intentamos entregar tu pedido #${order.id} pero no pudimos. Nos pondremos en contacto contigo.`;
-}
+    const conversationId = await createConversation(url, api_token, inbox_id, contactId);
+    if (!conversationId) {
+        console.log('[CHATWOOT] Failed to create conversation');
+        return;
+    }
+    console.log('[CHATWOOT] Conversation ID:', conversationId);
 
-if (message) {
-    console.log('[CHATWOOT] Sending Message:', message);
-    await sendMessage(url, api_token, conversationId, message);
-} else {
-    console.log('[CHATWOOT] No message defined for status:', status);
-}
+    let message = '';
+    if (status === 'in_progress') {
+        message = `🚚 Hola ${customer.name}, tu pedido #${order.id} está en camino. Prepárate para recibirlo pronto.`;
+    } else if (status === 'delivered') {
+        message = `✅ Entregado. Tu pedido #${order.id} ha llegado correctamente. ¡Gracias por confiar en nosotros!`;
+    } else if (status === 'failed') {
+        message = `⚠️ Hola ${customer.name}, intentamos entregar tu pedido #${order.id} pero no pudimos. Nos pondremos en contacto contigo.`;
+    }
+
+    if (message) {
+        console.log('[CHATWOOT] Sending Message:', message);
+        await sendMessage(url, api_token, conversationId, message);
+    } else {
+        console.log('[CHATWOOT] No message defined for status:', status);
+    }
 }
 
 module.exports = { notifyStatusUpdate };

@@ -149,7 +149,21 @@ export default function Integrations() {
         loadSettings();
     }, []);
 
+    // Fetch Config when modal opens
+    useEffect(() => {
+        if (selectedIntegration) {
+            setConfigData({}); // Reset
+            api.get(`/integrations/${selectedIntegration.id}`)
+                .then(res => {
+                    const data = typeof res.data.config === 'string' ? JSON.parse(res.data.config) : (res.data.config || {});
+                    setConfigData(data);
+                })
+                .catch(console.error);
+        }
+    }, [selectedIntegration]);
+
     const handleAction = (item) => {
+        // ... existing handleAction logic ...
         if (item.action === 'configure') {
             setSelectedIntegration(item);
         } else if (item.action === 'download') {
@@ -165,6 +179,7 @@ export default function Integrations() {
 
     return (
         <div className="p-8 min-h-screen bg-black text-white">
+            {/* Headers and Grid omitted for brevity... existing code remains until Modal */}
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500 mb-2">
                     Tienda de Integraciones
@@ -216,6 +231,7 @@ export default function Integrations() {
                 ))}
             </div>
 
+
             {/* Configuration Modal */}
             {selectedIntegration && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -237,13 +253,14 @@ export default function Integrations() {
                             </div>
                         </div>
 
-                        <form onSubmit={handleSaveConfig} className="space-y-4">
+                        <form key={JSON.stringify(configData)} onSubmit={handleSaveConfig} className="space-y-4">
                             <div>
                                 <label className="block text-xs uppercase text-gray-400 font-bold mb-1">
                                     {selectedIntegration.id === 'chatwoot' ? 'URL de Chatwoot' : 'URL de la Tienda / ERP'}
                                 </label>
                                 <input
                                     name="url"
+                                    defaultValue={configData.url || ''}
                                     className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                     placeholder={selectedIntegration.id === 'chatwoot' ? 'https://chat.miempresa.com' : (selectedIntegration.id === 'woocommerce' ? 'https://mitienda.com' : 'https://mi-empresa.odoo.com')}
                                     required
@@ -362,6 +379,7 @@ export default function Integrations() {
                                         <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Access Token</label>
                                         <input
                                             name="api_token"
+                                            defaultValue={configData.api_token || ''}
                                             type="password"
                                             className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                             placeholder="Token de Bot o Usuario"
@@ -372,6 +390,7 @@ export default function Integrations() {
                                         <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Inbox ID</label>
                                         <input
                                             name="inbox_id"
+                                            defaultValue={configData.inbox_id || ''}
                                             className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                             placeholder="Ej: 1"
                                             required
