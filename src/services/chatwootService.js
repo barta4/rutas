@@ -187,11 +187,11 @@ async function notifyStatusUpdate(tenantId, order, status) {
         try {
             const res = await axios.post(`${getAccountBaseURL()}/contacts`, {
                 ...data,
-                inbox_id: inboxId
+                inbox_id: Number(inbox_id)
             }, { headers: { 'api_access_token': api_token } });
             return res.data.payload.contact.id;
         } catch (e) {
-            console.error('[CHATWOOT] Create Contact Error:', e.response?.status, e.response?.data);
+            console.error('[CHATWOOT] Create Contact Error:', e.message, e.response?.data);
             return null;
         }
     };
@@ -203,7 +203,7 @@ async function notifyStatusUpdate(tenantId, order, status) {
                 headers: { 'api_access_token': api_token }
             });
             // Find open/snoozed in same inbox
-            const existing = res.data.payload.find(c => c.inbox_id == inboxId && c.status !== 'resolved');
+            const existing = res.data.payload.find(c => Number(c.inbox_id) === Number(inbox_id) && c.status !== 'resolved');
             return existing ? existing.id : null;
         } catch (e) { return null; }
     };
@@ -212,12 +212,12 @@ async function notifyStatusUpdate(tenantId, order, status) {
     const createNewConversation = async (contactId) => {
         try {
             const res = await axios.post(`${getAccountBaseURL()}/conversations`, {
-                source_id: contactId,
-                inbox_id: inboxId
+                source_id: Number(contactId),
+                inbox_id: Number(inbox_id)
             }, { headers: { 'api_access_token': api_token } });
             return res.data.id;
         } catch (e) {
-            console.error('[CHATWOOT] Create Conversation Error:', e.response?.status, e.response?.data);
+            console.error('[CHATWOOT] Create Conversation Error:', e.message, e.response?.data);
             // Debug 404
             if (e.response?.status === 404) {
                 console.log('[CHATWOOT] 404 Error. Verifying Inboxes...');
@@ -240,7 +240,7 @@ async function notifyStatusUpdate(tenantId, order, status) {
             }, { headers: { 'api_access_token': api_token } });
             console.log(`[CHATWOOT] Message sent to ${convId}`);
         } catch (e) {
-            console.error('[CHATWOOT] Send Message Error:', e.message);
+            console.error('[CHATWOOT] Send Message Error:', e.message, e.response?.data);
         }
     };
 
