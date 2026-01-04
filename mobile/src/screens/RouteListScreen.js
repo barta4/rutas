@@ -179,15 +179,28 @@ export default function RouteListScreen() {
     };
 
     const takePhoto = async () => {
-        let result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.5,
-        });
+        try {
+            // 1. Capture (Fastest possible, no editing)
+            let result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: false, // SKIP NATIVE EDITING UI for speed
+                quality: 0.5,
+            });
 
-        if (!result.canceled) {
-            setPhoto(result.assets[0]);
+            if (!result.canceled && result.assets[0]) {
+                // 2. Compress & Resize (The secret sauce)
+                const Manipulator = require('expo-image-manipulator');
+                const manipResult = await Manipulator.manipulateAsync(
+                    result.assets[0].uri,
+                    [{ resize: { width: 800 } }], // Resize to 800px width (plenty for POD)
+                    { compress: 0.4, format: Manipulator.SaveFormat.JPEG }
+                );
+
+                setPhoto(manipResult);
+            }
+        } catch (e) {
+            console.error("Camera Error:", e);
+            Alert.alert("Error", "No se pudo tomar la foto.");
         }
     };
 

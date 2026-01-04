@@ -202,10 +202,20 @@ async function startOrder(req, res) {
         // Let's refetch to be safe or update the query above.
         // Updating query is better but let's just refetch for safety and consistency with updateStatus.
         const fullOrderRes = await db.query('SELECT * FROM orders WHERE id = $1', [id]);
+
+        console.log(`[StartOrder] Debug: Driver ${req.driver.id} (Tenant: ${req.driver.tenant_id}) starting Order ${id}`);
+
         if (fullOrderRes.rowCount > 0 && req.driver && req.driver.tenant_id) {
             console.log('[StartOrder] Triggering Chatwoot for order', id);
             chatwootService.notifyStatusUpdate(req.driver.tenant_id, fullOrderRes.rows[0], 'in_progress')
+                .then(() => console.log('[StartOrder] Chatwoot notified successfully'))
                 .catch(err => console.error('Chatwoot Async Error (Start):', err));
+        } else {
+            console.warn('[StartOrder] SKIPPING Chatwoot. Conditions not met:', {
+                orderFound: fullOrderRes.rowCount > 0,
+                hasDriver: !!req.driver,
+                hasTenantId: !!req.driver?.tenant_id
+            });
         }
 
         res.json({ message: 'Viaje iniciado', eta_minutes: etaMinutes });
