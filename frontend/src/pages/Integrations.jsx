@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Download, ShoppingBag, Database, Puzzle, Server, CheckCircle, X, ExternalLink } from 'lucide-react';
+import { Download, ShoppingBag, Database, Puzzle, Server, CheckCircle, X, ExternalLink, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 
@@ -25,7 +25,7 @@ export default function Integrations() {
             category: 'ecommerce',
             name: 'WooCommerce',
             description: 'Sincroniza pedidos automáticamente desde tu tienda WordPress.',
-            icon: <ShoppingBag size={24} className="text-purple-400" />,
+            icon: <MessageCircle size={24} className="text-blue-400" />,
             status: 'available',
             action: 'configure',
             buttonText: 'Conectar'
@@ -103,6 +103,10 @@ export default function Integrations() {
             // Wix fields
             site_id: form.site_id?.value,
             // Reuse api_key for wix api key
+
+            // Chatwoot fields
+            api_token: form.api_token?.value, // Chatwoot API token
+            inbox_id: form.inbox_id?.value   // Chatwoot Inbox ID
         };
 
         try {
@@ -332,6 +336,40 @@ export default function Integrations() {
                                             type="password"
                                             className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
                                             placeholder="La clave obtenida en Wix Developers"
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Chatwoot Specific Fields */}
+                            {selectedIntegration.id === 'chatwoot' && (
+                                <>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Chatwoot URL</label>
+                                        <input
+                                            name="url"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="https://chat.miempresa.com"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Access Token</label>
+                                        <input
+                                            name="api_token"
+                                            type="password"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="Token de Bot o Usuario"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Inbox ID</label>
+                                        <input
+                                            name="inbox_id"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="Ej: 1"
                                             required
                                         />
                                     </div>

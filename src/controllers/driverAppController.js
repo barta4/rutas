@@ -106,6 +106,19 @@ async function updateOrderStatus(req, res) {
             timestamp: new Date().toISOString()
         });
 
+        // Notificar a Chatwoot (Async)
+        const chatwootService = require('../services/chatwootService');
+        // Need to fetch full order details including tenant_id usually, but let's see. 
+        // req.driver should have tenant_id. 
+        // We also need customer info which might not be in the 'check' query above.
+        // Let's refactor 'check' query to get customer details.
+
+        // Refetched for notification context
+        const orderDetails = await db.query('SELECT * FROM orders WHERE id = $1', [id]);
+        if (orderDetails.rowCount > 0 && req.driver && req.driver.tenant_id) {
+            chatwootService.notifyStatusUpdate(req.driver.tenant_id, orderDetails.rows[0], status).catch(err => console.error('Chatwoot Async Error:', err));
+        }
+
     } catch (err) {
         console.error('Update Status Error:', err);
         res.status(500).json({ error: 'Error al actualizar la orden' });
