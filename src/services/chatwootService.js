@@ -51,10 +51,26 @@ async function findOrCreateContact(baseURL, token, inboxId, customer) {
 
         // 3. Create
         console.log('[CHATWOOT] Creating new contact...');
+
+        // E.164 Formatting Helper (Simple)
+        let phone = customer.phone;
+        if (phone) {
+            // Remove non-digits
+            phone = phone.replace(/\D/g, '');
+            // Add +598 if not present (Assumption for local context, or generic +)
+            // If it starts with 09, it's likely UY mobile 09X XXX XXX -> 5989X XXX XXX
+            if (phone.startsWith('09')) {
+                phone = '598' + phone.substring(1);
+            }
+            if (!phone.startsWith('+')) {
+                phone = '+' + phone;
+            }
+        }
+
         const createRes = await axios.post(`${baseURL}/api/v1/accounts/1/contacts`, {
             name: customer.name || 'Cliente',
             email: customer.email,
-            phone_number: customer.phone,
+            phone_number: phone,
             inbox_id: inboxId
         }, {
             headers: { 'api_access_token': token }

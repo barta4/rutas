@@ -43,8 +43,10 @@ async function processTelemetry(driverId, lat, lng) {
             SELECT 
                 id, 
                 customer_name, 
+                customer_name, 
                 customer_phone,
-                customer_email,
+                -- customer_email might be missing, use NULL if not present
+                -- customer_email, 
                 notification_sent_approaching,
                 ST_X(coordinates::geometry) as target_lng, 
                 ST_Y(coordinates::geometry) as target_lat
