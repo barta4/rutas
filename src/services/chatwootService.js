@@ -277,10 +277,19 @@ async function notifyStatusUpdate(tenantId, order, status) {
 
     if (!contactId) {
         console.log('[CHATWOOT] Contact not found, creating new...');
+
+        // E.164 Formatting (Duplicated here for safety)
+        let phone = order.customer_phone;
+        if (phone) {
+            phone = phone.replace(/\D/g, '');
+            if (phone.startsWith('09')) phone = '598' + phone.substring(1);
+            if (!phone.startsWith('+')) phone = '+' + phone;
+        }
+
         const contactData = {
             name: order.customer_name || 'Cliente',
             email: order.customer_email,
-            phone_number: order.customer_phone
+            phone_number: phone
         };
         contactId = await createContact(contactData);
     }
