@@ -382,6 +382,35 @@ export default function Integrations() {
 
                             <p className="text-xs text-gray-500 mt-1">Tus datos se guardan encriptados.</p>
 
+                            {selectedIntegration.id === 'chatwoot' && (
+                                <div className="mt-4 p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+                                    <label className="block text-xs uppercase text-blue-400 font-bold mb-2">Probar Integración</label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            id="testPhone"
+                                            placeholder="+598..."
+                                            className="bg-black border border-zinc-600 rounded-lg p-2 text-white text-sm flex-1"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                const phone = document.getElementById('testPhone').value;
+                                                if (!phone) return alert('Ingresa un teléfono');
+                                                try {
+                                                    const res = await api.post('/integrations/chatwoot/test', { phone });
+                                                    alert(res.data.message);
+                                                } catch (e) {
+                                                    alert('Error: ' + (e.response?.data?.error || e.message));
+                                                }
+                                            }}
+                                            className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-sm font-bold"
+                                        >
+                                            Enviar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
                             <button className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl mt-4 flex items-center justify-center gap-2">
                                 <CheckCircle size={18} /> Guardar y Activar
                             </button>

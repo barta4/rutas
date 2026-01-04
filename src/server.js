@@ -133,6 +133,7 @@ app.put('/v1/admin/settings/:key', superAdminController.ensureSuperAdmin, superA
 app.get('/v1/system/settings', authMiddleware, superAdminController.getSystemSettings);
 
 const integrationsController = require('./controllers/integrationsController');
+app.post('/v1/integrations/chatwoot/test', authMiddleware, integrationsController.testChatwoot);
 app.post('/v1/integrations/:type', authMiddleware, integrationsController.saveIntegration);
 app.get('/v1/integrations/:type', authMiddleware, integrationsController.getIntegration);
 

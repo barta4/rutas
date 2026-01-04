@@ -51,4 +51,31 @@ async function getIntegration(req, res) {
     }
 }
 
-module.exports = { saveIntegration, getIntegration };
+async function testChatwoot(req, res) {
+    const tenant_id = req.tenant.id;
+    const { phone } = req.body;
+
+    if (!phone) return res.status(400).json({ error: 'Teléfono requerido' });
+
+    console.log(`[TEST] Testing Chatwoot for tenant ${tenant_id} to ${phone}`);
+
+    const chatwootService = require('../services/chatwootService');
+
+    // Mock minimal order object
+    const mockOrder = {
+        id: 'TEST-001',
+        customer_name: 'Test User',
+        customer_phone: phone,
+        customer_email: 'test@example.com'
+    };
+
+    try {
+        await chatwootService.notifyStatusUpdate(tenant_id, mockOrder, 'in_progress');
+        res.json({ message: 'Mensaje de prueba enviado (Revisa Logs/Chatwoot)' });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: 'Error enviando prueba: ' + e.message });
+    }
+}
+
+module.exports = { saveIntegration, getIntegration, testChatwoot };
