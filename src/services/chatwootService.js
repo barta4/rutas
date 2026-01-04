@@ -226,21 +226,27 @@ async function notifyStatusUpdate(tenantId, order, status) {
 
     // Create Conversation
     const createNewConversation = async (contactId) => {
+        const url = `${getAccountBaseURL()}/conversations`;
+        const payload = {
+            source_id: Number(contactId),
+            inbox_id: Number(inbox_id),
+            status: 'open'
+        };
+
+        console.log(`[CHATWOOT] Creating Conversation... POST ${url}`, JSON.stringify(payload));
+
         try {
-            const res = await axios.post(`${getAccountBaseURL()}/conversations`, {
-                source_id: Number(contactId),
-                inbox_id: Number(inbox_id)
-            }, { headers: { 'api_access_token': api_token } });
+            const res = await axios.post(url, payload, { headers: { 'api_access_token': api_token } });
             return res.data.id;
         } catch (e) {
             console.error('[CHATWOOT] Create Conversation Error:', e.message, e.response?.data);
+
             // Debug 404
             if (e.response?.status === 404) {
-                console.log('[CHATWOOT] 404 Error. Verifying Inboxes...');
-                try {
-                    const inb = await axios.get(`${getAccountBaseURL()}/inboxes`, { headers: { 'api_access_token': api_token } });
-                    console.log('Available Inboxes:', inb.data.payload.map(i => ({ id: i.id, name: i.name })));
-                } catch (iE) { console.error('Failed to list inboxes', iE.message); }
+                console.log('[CHATWOOT] 404 Checklist: ');
+                console.log(`- Account ID: ${accountId}`);
+                console.log(`- Inbox ID: ${inbox_id} (Type: ${typeof inbox_id})`);
+                console.log(`- Contact ID: ${contactId}`);
             }
             return null;
         }
