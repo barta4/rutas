@@ -266,16 +266,17 @@ export default function RouteListScreen() {
         Linking.openURL(`tel:${phone}`);
     };
 
+    const [loadingAction, setLoadingAction] = useState(null); // { id, type }
+
+    // ... existing tracking logic
+
     const handleStartOrder = async (item) => {
-        // 1. Si ya está en progreso, solo abre mapas
         if (item.status === 'in_progress') {
             Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
             return;
         }
 
-        // 2. Si no, avisar al backend (En Camino) -> Webhook
-        // 2. Si no, avisar al backend (En Camino)
-        setLoading(true);
+        setLoadingAction({ id: item.id, type: 'start' });
         try {
             let loc = null;
             try {
@@ -283,174 +284,63 @@ export default function RouteListScreen() {
                 loc = coords;
             } catch (e) { console.warn("No loc"); }
 
-            console.log(`Debug: Starting order ${item.id}`);
-
-            // 1. Send Notification (Await to ensure it leaves device)
             await api.post(`/driver/orders/${item.id}/start`, {
                 lat: loc?.latitude,
                 lng: loc?.longitude
             }).catch(err => console.error("API Start Warning:", err.message));
 
-            // 2. Update UI (Optimistic-ish)
             const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
             setRoute(updated);
-
-            // 3. Open Maps Immediately
             Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
 
         } catch (e) {
             console.error("Critical Start Error", e);
-            // Even if everything explodes, OPEN THE MAP
             Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
         } finally {
-            setLoading(false);
+            setLoadingAction(null);
         }
     };
 
     const renderItem = ({ item }) => {
+        // ... vars
         const isCompleted = item.status === 'completed';
         const isActive = nextActiveOrder && item.id === nextActiveOrder.id;
         const isPending = item.status === 'pending';
         const isDisabled = isPending && !isActive;
 
+        const isStarting = loadingAction?.id === item.id && loadingAction?.type === 'start';
+
         return (
-            <View style={[
-                styles.card,
-                isDisabled && { opacity: 0.5 },
-                isCompleted && { borderColor: '#10b981', borderWidth: 1 }
-            ]}>
-                <View style={styles.cardHeader}>
-                    <View style={[styles.badge, isActive && { backgroundColor: '#8b5cf6' }]}>
-                        <Text style={[styles.badgeText, isActive && { color: '#fff' }]}>#{item.delivery_sequence}</Text>
-                    </View>
-                    <Text style={[styles.status, { color: isCompleted ? '#10b981' : '#facc15' }]}>
-                        {isCompleted ? 'COMPLETADO' : (isActive ? 'EN CURSO' : 'PENDIENTE')}
-                    </Text>
-                </View>
-
-                <View style={styles.infoRow}>
-                    <Package size={20} color="#a1a1aa" />
-                    <Text style={styles.customerName}>{item.customer_name}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <MapPin size={20} color="#a1a1aa" />
-                    <Text style={styles.address}>{item.address_text}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <Phone size={20} color="#a1a1aa" />
-                    <Text style={styles.detailText}>{item.customer_phone || 'Sin teléfono'}</Text>
-                </View>
-                <View style={styles.infoRow}>
-                    <User size={20} color="#a1a1aa" />
-                    <Text style={styles.detailText}>CI: {item.customer_cedula || 'N/A'}</Text>
-                </View>
-
-                {!isCompleted && (
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.callButton, isDisabled && { backgroundColor: '#3f3f46' }]}
-                            onPress={() => handleCall(item.customer_phone)}
-                            disabled={isDisabled}
-                        >
-                            <Phone size={18} color="#fff" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.navButton, isDisabled && { backgroundColor: '#3f3f46' }]}
-                            onPress={() => handleStartOrder(item)}
-                            disabled={isDisabled}
-                        >
-                            <Navigation size={18} color="#fff" />
-                            <Text style={styles.actionText}>{isDisabled ? '...' : (item.status === 'in_progress' ? 'Retomar' : 'Ir')}</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.actionButton, styles.completeButton, isDisabled && { backgroundColor: '#3f3f46' }]}
-                            onPress={() => handleCompletePress(item)}
-                            disabled={isDisabled}
-                        >
-                            <CheckCircle size={18} color="#fff" />
-                            <Text style={styles.actionText}>Listo</Text>
-                        </TouchableOpacity>
-                    </View>
+            // ... inside View
+            // ... existing JSX
+            <TouchableOpacity
+                style={[styles.actionButton, styles.navButton, isDisabled && { backgroundColor: '#3f3f46' }]}
+                onPress={() => handleStartOrder(item)}
+                disabled={isDisabled || isStarting}
+            >
+                {isStarting ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                    <Navigation size={18} color="#fff" />
                 )}
-            </View>
+                <Text style={styles.actionText}>
+                    {isStarting ? 'Avisando...' : (isDisabled ? '...' : (item.status === 'in_progress' ? 'Retomar' : 'Ir'))}
+                </Text>
+            </TouchableOpacity>
+            // ...
         );
     };
 
-    return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.greeting}>Hola, {driver?.name}</Text>
-                <TouchableOpacity onPress={logout}><LogOut size={24} color="#ef4444" /></TouchableOpacity>
-            </View>
+    // ... in Modal
 
-            <FlatList
-                data={route}
-                renderItem={renderItem}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.list}
-                refreshControl={
-                    <RefreshControl refreshing={loading} onRefresh={fetchRoute} colors={['#8b5cf6']} tintColor="#8b5cf6" />
-                }
-            />
-
-            <Modal
-                animationType="slide"
-                transparent={true}
-                visible={modalVisible}
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalView}>
-                    <View style={styles.modalHeader}>
-                        <Text style={styles.modalTitle}>Confirmar Entrega</Text>
-                        <TouchableOpacity onPress={() => setModalVisible(false)}>
-                            <X size={24} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {isFar && (
-                        <View style={styles.warningBox}>
-                            <Text style={styles.warningText}>⚠️ Estás lejos ({Math.round(distance)}m)</Text>
-                            <Text style={styles.warningSubtext}>Indica el motivo de la excepción.</Text>
-                        </View>
-                    )}
-
-                    <Text style={styles.label}>Nota / Motivo {isFar && "*"}</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Ej. Entregado en recepción..."
-                        placeholderTextColor="#666"
-                        value={note}
-                        onChangeText={setNote}
-                    />
-
-                    <Text style={styles.label}>Foto de Evidencia</Text>
-                    {photo ? (
-                        <View style={styles.photoContainer}>
-                            <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
-                            <TouchableOpacity style={styles.retakeButton} onPress={takePhoto}>
-                                <Text style={styles.retakeText}>Cambiar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    ) : (
-                        <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-                            <CameraIcon size={24} color="#fff" />
-                            <Text style={styles.photoButtonText}>Tomar Foto</Text>
-                        </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity
-                        style={styles.submitButton}
-                        onPress={submitCompletion}
-                        disabled={loading}
-                    >
-                        <Text style={styles.submitText}>{loading ? 'Enviando...' : 'Finalizar Orden'}</Text>
-                    </TouchableOpacity>
-                </View>
-            </Modal>
-        </View>
-    );
+    <TouchableOpacity
+        style={styles.submitButton}
+        onPress={submitCompletion}
+        disabled={loading}
+    >
+        {loading && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
+        <Text style={styles.submitText}>{loading ? 'Subiendo datos...' : 'Finalizar Orden'}</Text>
+    </TouchableOpacity>
 }
 
 const styles = StyleSheet.create({
