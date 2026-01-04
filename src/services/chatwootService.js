@@ -16,18 +16,41 @@ async function getConfig(tenantId) {
 async function findOrCreateContact(baseURL, token, inboxId, customer) {
     if (!customer.email && !customer.phone) return null;
 
-    try {
-        // Search
-        const searchRes = await axios.get(`${baseURL}/api/v1/accounts/1/contacts/search`, {
-            params: { q: customer.email || customer.phone },
-            headers: { 'api_access_token': token }
-        });
+    // Helper to search
+    const searchContact = async (query) => {
+        try {
+            const res = await axios.get(`${baseURL}/api/v1/accounts/1/contacts/search`, {
+                params: { q: query },
+                headers: { 'api_access_token': token }
+            });
+            if (res.data.payload.length > 0) return res.data.payload[0].id;
+        } catch (e) {
+            // ignore search errors
+        }
+        return null;
+    };
 
-        if (searchRes.data.payload.length > 0) {
-            return searchRes.data.payload[0].id;
+    try {
+        // 1. Try Search by Email
+        if (customer.email) {
+            const id = await searchContact(customer.email);
+            if (id) {
+                console.log(`[CHATWOOT] Found contact by email: ${customer.email} -> ${id}`);
+                return id;
+            }
         }
 
-        // Create
+        // 2. Try Search by Phone
+        if (customer.phone) {
+            const id = await searchContact(customer.phone);
+            if (id) {
+                console.log(`[CHATWOOT] Found contact by phone: ${customer.phone} -> ${id}`);
+                return id;
+            }
+        }
+
+        // 3. Create
+        console.log('[CHATWOOT] Creating new contact...');
         const createRes = await axios.post(`${baseURL}/api/v1/accounts/1/contacts`, {
             name: customer.name || 'Cliente',
             email: customer.email,
@@ -38,8 +61,17 @@ async function findOrCreateContact(baseURL, token, inboxId, customer) {
         });
 
         return createRes.data.payload.contact.id;
+
     } catch (e) {
-        console.error('Chatwoot Contact Error:', e.message);
+        // Detailed Error Logging
+        if (e.response) {
+            console.error('[CHATWOOT] Contact API Error:', e.response.status, JSON.stringify(e.response.data));
+
+            // If error is 422 (Unprocessable Entity), it might be a duplicate that wasn't found by search?
+            // Rare edge case, but possible.
+        } else {
+            console.error('[CHATWOOT] Contact Network Error:', e.message);
+        }
         return null;
     }
 }
