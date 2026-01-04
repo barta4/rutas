@@ -34,13 +34,17 @@ async function processTelemetry(driverId, lat, lng) {
 
         const { active_route_id, tenant_id } = updateRes.rows[0];
 
+        // 3. Importar Chatwoot (Lazy load or top)
+        const chatwootService = require('./chatwootService');
+
         // 3. Lógica de Proximidad (Si hay orden activa)
-        // 3. Lógica de Proximidad (Si hay orden activa o buscamos la más cercana en estado in_progress)
         // Buscamos ordenes en 'in_progress' asignadas al chofer
         const orderRes = await client.query(`
             SELECT 
                 id, 
                 customer_name, 
+                customer_phone,
+                customer_email,
                 notification_sent_approaching,
                 ST_X(coordinates::geometry) as target_lng, 
                 ST_Y(coordinates::geometry) as target_lat
@@ -54,8 +58,7 @@ async function processTelemetry(driverId, lat, lng) {
         if (orderRes.rowCount > 0) {
             const order = orderRes.rows[0];
 
-            // Calcular distancia (Haversine approx en JS para no llamar DB de nuevo, O usar PostGIS)
-            // Usaremos PostGIS para consistencia
+            // Calcular distancia (PostGIS)
             const distRes = await client.query(`
                 SELECT ST_Distance(
                     ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
@@ -67,7 +70,7 @@ async function processTelemetry(driverId, lat, lng) {
 
             // Si está a menos de 500 metros
             if (distance < 500) {
-                // Marcar como enviado INMEDIATAMENTE para evitar condiciones de carrera (doble envío)
+                // Marcar como enviado INMEDIATAMENTE
                 await client.query(`
                     UPDATE orders 
                     SET notification_sent_approaching = TRUE 
@@ -83,6 +86,12 @@ async function processTelemetry(driverId, lat, lng) {
                     distance_meters: Math.round(distance),
                     timestamp: new Date().toISOString()
                 });
+
+                // Enviar Chatwoot
+                if (tenant_id) {
+                    chatwootService.notifyStatusUpdate(tenant_id, order, 'approaching')
+                        .catch(err => console.error('[Telemetry] Chatwoot Approaching Error:', err.message));
+                }
             }
         }
 
