@@ -116,7 +116,8 @@ export default function Integrations() {
 
             // Chatwoot fields
             api_token: form.api_token?.value,
-            inbox_id: form.inbox_id?.value
+            inbox_id: form.inbox_id?.value,
+            account_id: form.account_id?.value
         };
 
         try {
@@ -375,6 +376,17 @@ export default function Integrations() {
                             {selectedIntegration.id === 'chatwoot' && (
                                 <>
                                     {/* URL field is handled by the generic input above */}
+                                    <div>
+                                        <label className="block text-xs uppercase text-gray-400 font-bold mb-1">Account ID (Tenant)</label>
+                                        <input
+                                            name="account_id"
+                                            defaultValue={configData.account_id || '1'}
+                                            type="number"
+                                            className="w-full bg-black border border-zinc-700 rounded-lg p-3 text-white focus:border-blue-500 outline-none"
+                                            placeholder="Ej: 1"
+                                            required
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-xs uppercase text-gray-400 font-bold mb-1">API Access Token</label>
                                         <input

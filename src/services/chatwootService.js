@@ -140,6 +140,7 @@ async function notifyStatusUpdate(tenantId, order, status) {
         return;
     }
 
+    // Parse Config
     let config = configRaw;
     if (typeof config === 'string') {
         try {
@@ -152,13 +153,100 @@ async function notifyStatusUpdate(tenantId, order, status) {
 
     console.log(`[CHATWOOT] Loaded config for ${tenantId}:`, typeof config, JSON.stringify(config));
 
-    const { url, api_token, inbox_id } = config;
+    // Desctructure with default Account ID = 1
+    const { url, api_token, inbox_id, account_id } = config;
+    const accountId = account_id || 1; // Default to 1 if not provided
+
     if (!url || !api_token || !inbox_id) {
         console.log(`[CHATWOOT] Incomplete config for tenant ${tenantId}:`, { url_exists: !!url, token_exists: !!api_token, inbox: inbox_id });
         return;
     }
 
-    console.log(`[CHATWOOT] Starting notification for Order #${order.id} Status: ${status}`);
+    console.log(`[CHATWOOT] Starting notification for Order #${order.id} Status: ${status} (Account: ${accountId})`);
+
+    // Helper to Construct Base Account URL
+    const getAccountBaseURL = () => `${url.replace(/\/$/, '')}/api/v1/accounts/${accountId}`;
+
+    // ---------------------------------------------------------
+    // INTERNAL HELPER FUNCTIONS (Scoped with config/accountId)
+    // ---------------------------------------------------------
+
+    // Search Contact
+    const findContact = async (query) => {
+        try {
+            const res = await axios.get(`${getAccountBaseURL()}/contacts/search`, {
+                params: { q: query },
+                headers: { 'api_access_token': api_token }
+            });
+            return res.data.payload.length > 0 ? res.data.payload[0].id : null;
+        } catch (e) { return null; }
+    };
+
+    // Create Contact
+    const createContact = async (data) => {
+        try {
+            const res = await axios.post(`${getAccountBaseURL()}/contacts`, {
+                ...data,
+                inbox_id: inboxId
+            }, { headers: { 'api_access_token': api_token } });
+            return res.data.payload.contact.id;
+        } catch (e) {
+            console.error('[CHATWOOT] Create Contact Error:', e.response?.status, e.response?.data);
+            return null;
+        }
+    };
+
+    // Find Existing Conversation
+    const findActiveConversation = async (contactId) => {
+        try {
+            const res = await axios.get(`${getAccountBaseURL()}/contacts/${contactId}/conversations`, {
+                headers: { 'api_access_token': api_token }
+            });
+            // Find open/snoozed in same inbox
+            const existing = res.data.payload.find(c => c.inbox_id == inboxId && c.status !== 'resolved');
+            return existing ? existing.id : null;
+        } catch (e) { return null; }
+    };
+
+    // Create Conversation
+    const createNewConversation = async (contactId) => {
+        try {
+            const res = await axios.post(`${getAccountBaseURL()}/conversations`, {
+                source_id: contactId,
+                inbox_id: inboxId
+            }, { headers: { 'api_access_token': api_token } });
+            return res.data.id;
+        } catch (e) {
+            console.error('[CHATWOOT] Create Conversation Error:', e.response?.status, e.response?.data);
+            // Debug 404
+            if (e.response?.status === 404) {
+                console.log('[CHATWOOT] 404 Error. Verifying Inboxes...');
+                try {
+                    const inb = await axios.get(`${getAccountBaseURL()}/inboxes`, { headers: { 'api_access_token': api_token } });
+                    console.log('Available Inboxes:', inb.data.payload.map(i => ({ id: i.id, name: i.name })));
+                } catch (iE) { console.error('Failed to list inboxes', iE.message); }
+            }
+            return null;
+        }
+    };
+
+    // Send Message
+    const sendMsg = async (convId, text) => {
+        try {
+            await axios.post(`${getAccountBaseURL()}/conversations/${convId}/messages`, {
+                content: text,
+                message_type: 'outgoing',
+                private: false
+            }, { headers: { 'api_access_token': api_token } });
+            console.log(`[CHATWOOT] Message sent to ${convId}`);
+        } catch (e) {
+            console.error('[CHATWOOT] Send Message Error:', e.message);
+        }
+    };
+
+    // ---------------------------------------------------------
+    // MAIN FLOW
+    // ---------------------------------------------------------
 
     // Fallback if no phone/email
     if (!order.customer_phone && !order.customer_email) {
@@ -166,39 +254,52 @@ async function notifyStatusUpdate(tenantId, order, status) {
         return;
     }
 
-    const customer = {
-        name: order.customer_name,
-        email: order.customer_email,
-        phone: order.customer_phone
-    };
+    // 1. Resolve Contact
+    let contactId = null;
+    if (order.customer_email) contactId = await findContact(order.customer_email);
+    if (!contactId && order.customer_phone) contactId = await findContact(order.customer_phone);
 
-    console.log('[CHATWOOT] Seeking Contact:', customer);
-    const contactId = await findOrCreateContact(url, api_token, inbox_id, customer);
     if (!contactId) {
-        console.log('[CHATWOOT] Failed to find/create contact');
+        console.log('[CHATWOOT] Contact not found, creating new...');
+        const contactData = {
+            name: order.customer_name || 'Cliente',
+            email: order.customer_email,
+            phone_number: order.customer_phone
+        };
+        contactId = await createContact(contactData);
+    }
+
+    if (!contactId) {
+        console.log('[CHATWOOT] Failed to resolve contact ID');
         return;
     }
-    console.log('[CHATWOOT] Contact ID:', contactId);
+    console.log('[CHATWOOT] Contact ID Resolved:', contactId);
 
-    const conversationId = await createConversation(url, api_token, inbox_id, contactId);
+    // 2. Resolve Conversation
+    let conversationId = await findActiveConversation(contactId);
     if (!conversationId) {
-        console.log('[CHATWOOT] Failed to create conversation');
+        console.log('[CHATWOOT] No active conversation, creating new...');
+        conversationId = await createNewConversation(contactId);
+    }
+
+    if (!conversationId) {
+        console.log('[CHATWOOT] Failed to resolve conversation ID');
         return;
     }
-    console.log('[CHATWOOT] Conversation ID:', conversationId);
+    console.log('[CHATWOOT] Conversation ID Resolved:', conversationId);
 
+    // 3. Send Message
     let message = '';
     if (status === 'in_progress') {
-        message = `🚚 Hola ${customer.name}, tu pedido #${order.id} está en camino. Prepárate para recibirlo pronto.`;
+        message = `🚚 Hola ${order.customer_name}, tu pedido #${order.id} está en camino. Prepárate para recibirlo pronto.`;
     } else if (status === 'delivered') {
         message = `✅ Entregado. Tu pedido #${order.id} ha llegado correctamente. ¡Gracias por confiar en nosotros!`;
     } else if (status === 'failed') {
-        message = `⚠️ Hola ${customer.name}, intentamos entregar tu pedido #${order.id} pero no pudimos. Nos pondremos en contacto contigo.`;
+        message = `⚠️ Hola ${order.customer_name}, intentamos entregar tu pedido #${order.id} pero no pudimos. Nos pondremos en contacto contigo.`;
     }
 
     if (message) {
-        console.log('[CHATWOOT] Sending Message:', message);
-        await sendMessage(url, api_token, conversationId, message);
+        await sendMsg(conversationId, message);
     } else {
         console.log('[CHATWOOT] No message defined for status:', status);
     }
