@@ -76,8 +76,27 @@ async function findOrCreateContact(baseURL, token, inboxId, customer) {
     }
 }
 
-// 2. Create Conversation
+// 2. Get or Create Conversation
 async function createConversation(baseURL, token, inboxId, contactId) {
+    // 2.1 First, check if there is an existing ACTIVE conversation for this contact
+    try {
+        const conversationsRes = await axios.get(`${baseURL}/api/v1/accounts/1/contacts/${contactId}/conversations`, {
+            headers: { 'api_access_token': token }
+        });
+
+        // Look for any conversation that is not 'resolved' (i.e., open or snoozed) and matches inbox
+        // Note: Chatwoot API returns list of conversations.
+        const existing = conversationsRes.data.payload.find(c => c.inbox_id == inboxId && c.status !== 'resolved');
+
+        if (existing) {
+            console.log(`[CHATWOOT] Found existing active conversation: ${existing.id}`);
+            return existing.id;
+        }
+    } catch (e) {
+        console.warn('[CHATWOOT] Failed to check existing conversations, proceeding to create:', e.message);
+    }
+
+    // 2.2 Create new if none found
     try {
         const res = await axios.post(`${baseURL}/api/v1/accounts/1/conversations`, {
             source_id: contactId,
@@ -89,18 +108,9 @@ async function createConversation(baseURL, token, inboxId, contactId) {
     } catch (e) {
         console.error('Chatwoot Conversation API Error:', e.response?.status, JSON.stringify(e.response?.data));
 
-        // If 404, it might be wrong Inbox ID. Let's try to list available inboxes to help debug.
+        // 404 Debugging
         if (e.response?.status === 404) {
-            try {
-                console.log('[CHATWOOT] Fetching available inboxes to debug...');
-                const inboxesRes = await axios.get(`${baseURL}/api/v1/accounts/1/inboxes`, {
-                    headers: { 'api_access_token': token }
-                });
-                const available = inboxesRes.data.payload.map(i => ({ id: i.id, name: i.name }));
-                console.log('[CHATWOOT] AVAILABLE INBOXES:', JSON.stringify(available, null, 2));
-            } catch (inboxErr) {
-                console.error('[CHATWOOT] Could not list inboxes:', inboxErr.message);
-            }
+            console.error('[CHATWOOT] 404 Error - Ensure Chatwoot Account ID is 1 and Inbox ID exists.');
         }
         return null;
     }
@@ -118,7 +128,7 @@ async function sendMessage(baseURL, token, conversationId, message) {
         });
         console.log(`[Chatwoot] Message sent to conv ${conversationId}`);
     } catch (e) {
-        console.error('Chatwoot Send Error:', e.message);
+        console.error('Chatwoot Send Error:', e.message, e.response?.data);
     }
 }
 
