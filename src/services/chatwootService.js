@@ -87,9 +87,21 @@ async function createConversation(baseURL, token, inboxId, contactId) {
         });
         return res.data.id;
     } catch (e) {
-        // Conversation might already exist active, search relevant logic omitted for brevity
-        // If fail, just return null, we can't message
-        console.error('Chatwoot Converation Error:', e.message);
+        console.error('Chatwoot Conversation API Error:', e.response?.status, JSON.stringify(e.response?.data));
+
+        // If 404, it might be wrong Inbox ID. Let's try to list available inboxes to help debug.
+        if (e.response?.status === 404) {
+            try {
+                console.log('[CHATWOOT] Fetching available inboxes to debug...');
+                const inboxesRes = await axios.get(`${baseURL}/api/v1/accounts/1/inboxes`, {
+                    headers: { 'api_access_token': token }
+                });
+                const available = inboxesRes.data.payload.map(i => ({ id: i.id, name: i.name }));
+                console.log('[CHATWOOT] AVAILABLE INBOXES:', JSON.stringify(available, null, 2));
+            } catch (inboxErr) {
+                console.error('[CHATWOOT] Could not list inboxes:', inboxErr.message);
+            }
+        }
         return null;
     }
 }
