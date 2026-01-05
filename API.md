@@ -102,8 +102,10 @@ Reporta una entrega o fallo. Soporta subida de foto (Multipart).
 {
   "customer_name": "Cliente Final",
   "customer_phone": "099123456",
-  "address_text": "Av. 18 de Julio 1234, Montevideo",
-  "coordinates": { "lat": -34.90, "lng": -56.18 } // Opcional
+  "address_text": "Av. 18 de Julio 1234",
+  "city": "Montevideo",         // Nuevo
+  "neighborhood": "Centro",     // Nuevo
+  "coordinates": { "lat": -34.90, "lng": -56.18 } // Opcional (sino se geocodifica automáticamente)
 }
 ```
 
@@ -114,7 +116,9 @@ Reporta una entrega o fallo. Soporta subida de foto (Multipart).
 **PUT** `/orders/:id`
 ```json
 {
-  "driver_id": "uuid-driver..."
+  "driver_id": "uuid-driver...",
+  "city": "Montevideo",
+  "neighborhood": "Centro"
 }
 ```
 
