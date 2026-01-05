@@ -70,12 +70,13 @@ async function sync(integration) {
                 // Insert
                 await db.query(`
                     INSERT INTO orders (
-                        tenant_id, customer_name, address_text, status, completion_notes, created_at
-                    ) VALUES ($1, $2, $3, 'pending', $4, NOW())
+                        tenant_id, customer_name, address_text, city, status, completion_notes, created_at
+                    ) VALUES ($1, $2, $3, $4, 'pending', $5, NOW())
                 `, [
                     integration.tenant_id,
                     customerName,
                     addressText,
+                    city,
                     `[Wix: ${wixOrder.number}] Total: ${wixOrder.currency} ${wixOrder.totals.total} - Items: ${itemsList}`
                 ]);
                 count++;
