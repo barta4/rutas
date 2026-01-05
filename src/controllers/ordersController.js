@@ -1,5 +1,8 @@
 const db = require('../config/db');
 const { optimizeRoute } = require('../services/routeOptimizer');
+const { resolveAddress } = require('../services/addressIntelligence');
+const { geocodeAddress } = require('../services/googleMapsService'); // Mantener para fallback o uso directo si se requiere especificamente
+
 
 async function createOrder(req, res) {
 
@@ -9,6 +12,8 @@ async function createOrder(req, res) {
         customer_phone,
         customer_cedula,
         address_text,
+        city,          // Nuevo campo
+        neighborhood,  // Nuevo campo
         lat,
         lng,
         driver_id,
@@ -18,21 +23,48 @@ async function createOrder(req, res) {
 
     const tenantId = req.tenant.id; // From authMiddleware
 
-    // Auto-Geocode if coordinates are missing
+    // --- Geocoding Refinado ---
     let finalLat = lat;
     let finalLng = lng;
+    let finalAddress = address_text;
+    let postalCodeResolved = null;
+    let aiScore = 0;
+    let aiNotes = null;
 
     if ((!finalLat || !finalLng) && address_text) {
         try {
-            console.log(`Auto-geocoding address: ${address_text}`);
-            const geoResult = await geocodeAddress(address_text);
-            if (geoResult) {
+            console.log(`🌍 Auto-geocoding: ${address_text} [${city || ''}, ${neighborhood || ''}]`);
+
+            // Fetch Depot Location for Distance Validation
+            let depotLocation = null;
+            if (depot_id) {
+                const depotRes = await db.query('SELECT ST_X(coordinates::geometry) as lng, ST_Y(coordinates::geometry) as lat FROM depots WHERE id = $1', [depot_id]);
+                if (depotRes.rowCount > 0 && depotRes.rows[0].lat) {
+                    depotLocation = { lat: depotRes.rows[0].lat, lng: depotRes.rows[0].lng };
+                }
+            }
+
+            const geoResult = await resolveAddress(address_text, {
+                city,
+                neighborhood,
+                depotLocation,
+                maxDistanceKm: 60 // Configurable?
+            });
+
+            if (geoResult && geoResult.coordinates) {
                 finalLat = geoResult.coordinates.lat;
                 finalLng = geoResult.coordinates.lng;
-                console.log(`Geocoded to: ${finalLat}, ${finalLng}`);
+                finalAddress = geoResult.final_address;
+                postalCodeResolved = geoResult.postal_code;
+                aiScore = geoResult.ai_risk_score;
+                aiNotes = geoResult.ai_fix_notes;
+
+                console.log(`✅ Geocoded to: ${finalLat}, ${finalLng} (Postal: ${postalCodeResolved})`);
+            } else {
+                console.warn('⚠️ No se pudo geocodificar la dirección.');
             }
         } catch (e) {
-            console.warn('Auto-geocode failed:', e.message);
+            console.error('Auto-geocode critical error:', e);
         }
     }
 
@@ -44,16 +76,21 @@ async function createOrder(req, res) {
                 customer_phone, 
                 customer_cedula,
                 address_text, 
+                city,
+                neighborhood,
+                postal_code,
                 coordinates, 
                 status, 
                 driver_id, 
                 depot_id,
                 delivery_sequence,
+                ai_risk_score,
+                ai_fix_notes,
                 created_at
             ) VALUES (
-                $1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326), 'pending', $8, $9, $10, NOW()
+                $1, $2, $3, $4, $5, $6, $7, $8, ST_SetSRID(ST_MakePoint($9, $10), 4326), 'pending', $11, $12, $13, $14, $15, NOW()
             ) RETURNING id, customer_name
-        `, [tenantId, customer_name, customer_phone, customer_cedula, address_text, finalLng, finalLat, driver_id, depot_id, delivery_sequence]);
+        `, [tenantId, customer_name, customer_phone, customer_cedula, finalAddress, city, neighborhood, postalCodeResolved, finalLng, finalLat, driver_id, depot_id, delivery_sequence, aiScore, aiNotes]);
 
         res.json({ message: 'Order created', order: result.rows[0] });
     } catch (err) {
@@ -106,7 +143,7 @@ async function updateOrder(req, res) {
     const tenantId = req.tenant.id;
     const { id } = req.params;
     const {
-        customer_name, address_text, customer_phone, customer_cedula,
+        customer_name, address_text, city, neighborhood, customer_phone, customer_cedula,
         driver_id, depot_id, delivery_sequence, status
     } = req.body;
 
@@ -125,6 +162,8 @@ async function updateOrder(req, res) {
 
         addField('customer_name', customer_name);
         addField('address_text', address_text);
+        addField('city', city);
+        addField('neighborhood', neighborhood);
         addField('customer_phone', customer_phone);
         addField('customer_cedula', customer_cedula);
         addField('driver_id', driver_id);

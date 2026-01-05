@@ -1,0 +1,93 @@
+/**
+ * Mapeo de Códigos Postales por Barrio/Ciudad
+ * Formato: City -> Neighborhood -> Postal Code
+ * Estos códigos ayudarán a Google Maps a desambiguar direcciones.
+ */
+const POSTAL_CODES = {
+    "Montevideo": {
+        "Centro": "11100",
+        "Ciudad Vieja": "11000",
+        "Cordón": "11200",
+        "Palermo": "11200",
+        "Parque Rodó": "11200",
+        "Tres Cruces": "11800",
+        "La Comercial": "11800",
+        "La Blanqueada": "11600",
+        "Parque Batlle": "11600",
+        "Villa Dolores": "11600",
+        "Pocitos": "11300",
+        "Punta Carretas": "11300",
+        "Villa Biarritz": "11300",
+        "Buceo": "11400",
+        "Malvín": "11400",
+        "Malvín Norte": "11400",
+        "Punta Gorda": "11400",
+        "Carrasco": "11500",
+        "Carrasco Norte": "11500",
+        "Unión": "11400",
+        "Maroñas": "12000",
+        "Curva de Maroñas": "12000",
+        "Flor de Maroñas": "12000",
+        "Jardines del Hipódromo": "12000",
+        "Piedras Blancas": "12200",
+        "Manga": "12200",
+        "Peñarol": "12400",
+        "Sayago": "12400",
+        "Conciliación": "12400",
+        "Colón": "12500",
+        "Lezica": "12500",
+        "Melilla": "12500",
+        "Paso de la Arena": "12600",
+        "Santiago Vázquez": "12600",
+        "Nuevo París": "12600",
+        "Belvedere": "11900",
+        "La Teja": "11900",
+        "Cerro": "12800",
+        "Casabó": "12800",
+        "Pajas Blancas": "12800",
+        "Prado": "11700",
+        "Atahualpa": "11700",
+        "Capurro": "11700",
+        "Bella Vista": "11800",
+        "Aguada": "11800",
+        "Reducto": "11800",
+        "Jacinto Vera": "11800",
+        "Brazo Oriental": "11700",
+        "Aires Puros": "12300",
+        "Casavalle": "12300",
+        "Borro": "12300",
+        "Cerrito de la Victoria": "12300",
+        "Las Acacias": "12300"
+    },
+    "Canelones": {
+        "Ciudad de la Costa": "15000",
+        "Pando": "15600",
+        "Las Piedras": "15900",
+        "La Paz": "15900",
+        "Progreso": "15900",
+        "Canelones": "90000",
+        "Santa Lucía": "90200",
+        "Sauce": "91500",
+        "Tala": "91400",
+        "San Ramón": "91000",
+        "San Jacinto": "91600",
+        "Atlántida": "15200",
+        "Parque del Plata": "15400",
+        "Floresta": "15300",
+        "Costa Azul": "15300",
+        "Barros Blancos": "15800",
+        "Joaquín Suárez": "15800",
+        "Toledo": "15800"
+    },
+    "Maldonado": {
+        "Maldonado": "20000",
+        "Punta del Este": "20100",
+        "San Carlos": "20400",
+        "Piriápolis": "20200",
+        "Pan de Azúcar": "20300",
+        "Aiguá": "20500"
+    }
+    // Se pueden agregar más departamentos aquí
+};
+
+module.exports = { POSTAL_CODES };

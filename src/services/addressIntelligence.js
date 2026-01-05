@@ -1,60 +1,137 @@
 const googleMaps = require('./googleMapsService');
 const gemini = require('./geminiService');
+const { POSTAL_CODES } = require('../config/postal_codes');
 
 /**
- * Resuelve la ubicación final de un pedido usando IA Híbrida.
- * Flujo: Google Maps -> (Si bajo score) -> Gemini -> Google Maps
+ * Calcula la distancia en km entre dos puntos (Haversine)
  */
-async function resolveAddress(rawAddress) {
-    if (!rawAddress) return null;
-    let steps = [];
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radio de la tierra en km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
 
-    // Paso 1: Intento Directo con Google Maps
-    // console.log(`📍 Resolviendo: "${rawAddress}"`);
-    let geoResult = await googleMaps.geocodeAddress(rawAddress);
+function deg2rad(deg) {
+    return deg * (Math.PI / 180);
+}
+
+/**
+ * Resuelve la ubicación final de un pedido usando IA Híbrida y validación de distancia.
+ * Flujo: Lookup Postal -> Google Maps (con componentes) -> Validación Distancia -> (Si falla) -> Gemini
+ * @param {string} rawAddress
+ * @param {Object} context - { city, neighborhood, depotLocation: { lat, lng }, maxDistanceKm }
+ */
+async function resolveAddress(rawAddress, context = {}) {
+    if (!rawAddress) return null;
+
+    const { city, neighborhood, depotLocation, maxDistanceKm = 50 } = context;
+
+    // 0. Enriquecer con Código Postal si es posible
+    let postalCode = null;
+    if (city && neighborhood && POSTAL_CODES[city] && POSTAL_CODES[city][neighborhood]) {
+        postalCode = POSTAL_CODES[city][neighborhood];
+        console.log(`📍 Postal Code Resolved for ${city}, ${neighborhood}: ${postalCode}`);
+    }
+
+    // Paso 1: Intento Directo con Google Maps y Componentes
+    const geoOptions = { city, neighborhood, postalCode };
+    let geoResult = await googleMaps.geocodeAddress(rawAddress, geoOptions);
 
     // Evaluar calidad de geocodificación
-    // ROOFTOP y RANGE_INTERPOLATED son precisos. 
-    // GEOMETRIC_CENTER y APPROXIMATE suelen ser calles enteras o barrios.
     const isPrecise = geoResult && ['ROOFTOP', 'RANGE_INTERPOLATED'].includes(geoResult.location_type);
 
-    if (isPrecise) {
+    // Validación de Distancia (si tenemos ubicación del depósito)
+    let distanceAlert = false;
+    let distanceKm = 0;
+
+    if (geoResult && depotLocation && depotLocation.lat && depotLocation.lng) {
+        distanceKm = getDistanceFromLatLonInKm(
+            depotLocation.lat, depotLocation.lng,
+            geoResult.coordinates.lat, geoResult.coordinates.lng
+        );
+
+        if (distanceKm > maxDistanceKm) {
+            console.warn(`⚠️ Resultado Geocoding a ${distanceKm.toFixed(1)}km del depósito (Max: ${maxDistanceKm}km). Descartando o marcando.`);
+            // Podríamos invalidar geoResult aquí si queremos ser estrictos
+            // O simplemente bajarle el score / marcar riesgo
+            distanceAlert = true;
+        }
+    }
+
+    if (isPrecise && !distanceAlert) {
         console.log(`✅ Google Maps encontró match preciso: ${geoResult.location_type}`);
         return {
             final_address: geoResult.formatted_address,
             coordinates: geoResult.coordinates,
             ai_risk_score: 0.1, // Bajo riesgo
             ai_fix_notes: "Geocodificación directa exitosa",
-            method: "direct_maps"
+            method: "direct_maps",
+            postal_code: postalCode,
+            distance_from_depot: distanceKm // Store logic distance
         };
     }
 
-    // Paso 2: Intervención de IA (Gemini)
-    console.log(`⚠️ Dirección ambigua o imprecisa. Consultando a Gemini...`);
-    const aiNormalization = await gemini.normalizeAddress(rawAddress);
+    // Paso 2: Intervención de IA (Gemini) - Si falló maps o hay alerta de distancia
+    console.log(`⚠️ Dirección ambigua, imprecisa o lejana. Consultando a Gemini...`);
+
+    // Incluir contexto en el prompt (simulado pasando string enriquecido)
+    const contextString = `City: ${city || '?'}, Neighborhood: ${neighborhood || '?'}`;
+    const addressWithContext = `${rawAddress} (${contextString})`;
+
+    const aiNormalization = await gemini.normalizeAddress(addressWithContext);
 
     if (!aiNormalization) {
-        // Fallback si Gemini falla: devolver lo mejor que encontró Maps originalmente o error
+        // Fallback: Si Maps trajo algo (aunque sea Geometric Center o lejos), usémoslo con alto riesgo
+        if (geoResult) {
+            return {
+                final_address: geoResult.formatted_address,
+                coordinates: geoResult.coordinates,
+                ai_risk_score: distanceAlert ? 0.95 : 0.8, // Muy alto riesgo si está lejos
+                ai_fix_notes: distanceAlert
+                    ? `FALLBACK: Ubicación a ${distanceKm.toFixed(1)}km del depósito.`
+                    : "Calidad de geocodificación baja (APPROXIMATE)",
+                method: "fallback_raw_maps"
+            };
+        }
+
         return {
-            final_address: geoResult ? geoResult.formatted_address : rawAddress,
-            coordinates: geoResult ? geoResult.coordinates : null,
-            ai_risk_score: 0.9,
-            ai_fix_notes: "Fallo en IA, resultado original crudo",
-            method: "fallback_raw"
+            final_address: rawAddress,
+            coordinates: null,
+            ai_risk_score: 1.0,
+            ai_fix_notes: "Fallo total: Maps sin resultados y Gemini no normalizó",
+            method: "failure"
         };
     }
 
     console.log(`🤖 Gemini sugiere: "${aiNormalization.normalized_address}" (Conf: ${aiNormalization.confidence_score})`);
 
-    // Paso 3: Re-intentar Google Maps con dirección normalizada
-    const geoResultImproved = await googleMaps.geocodeAddress(aiNormalization.normalized_address);
+    // Paso 3: Re-intentar Google Maps con dirección normalizada por IA
+    // Mantenemos los componentes (city/neighborhood) para asegurar que no nos mande a otro lado
+    const geoResultImproved = await googleMaps.geocodeAddress(aiNormalization.normalized_address, geoOptions);
 
     if (geoResultImproved) {
+        // Validar distancia nuevamente
+        let improvedDistanceKm = 0;
+        let improvedDistanceAlert = false;
+        if (depotLocation && depotLocation.lat) {
+            improvedDistanceKm = getDistanceFromLatLonInKm(
+                depotLocation.lat, depotLocation.lng,
+                geoResultImproved.coordinates.lat, geoResultImproved.coordinates.lng
+            );
+            if (improvedDistanceKm > maxDistanceKm) improvedDistanceAlert = true;
+        }
+
         return {
             final_address: geoResultImproved.formatted_address,
             coordinates: geoResultImproved.coordinates,
-            ai_risk_score: 1 - aiNormalization.confidence_score, // Si confianza es 0.9, riesgo es 0.1
-            ai_fix_notes: `Corregido por IA: ${aiNormalization.fix_reason}`,
+            ai_risk_score: improvedDistanceAlert ? 0.9 : (1 - aiNormalization.confidence_score),
+            ai_fix_notes: `Corregido por IA: ${aiNormalization.fix_reason}. ${improvedDistanceAlert ? `[ALERTA DISTANCIA ${improvedDistanceKm.toFixed(1)}km]` : ''}`,
             method: "ai_corrected"
         };
     }
@@ -69,4 +146,4 @@ async function resolveAddress(rawAddress) {
     };
 }
 
-module.exports = { resolveLocation };
+module.exports = { resolveAddress };
