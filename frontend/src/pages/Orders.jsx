@@ -273,6 +273,26 @@ export default function Orders() {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <label className="text-gray-400 text-xs uppercase font-bold">Ciudad</label>
+                                    <input
+                                        className="w-full bg-dark-900 border border-white/10 rounded p-3 text-white focus:border-primary-500 outline-none"
+                                        placeholder="Montevideo"
+                                        value={newOrder.city || ''}
+                                        onChange={e => setNewOrder({ ...newOrder, city: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-gray-400 text-xs uppercase font-bold">Barrio</label>
+                                    <input
+                                        className="w-full bg-dark-900 border border-white/10 rounded p-3 text-white focus:border-primary-500 outline-none"
+                                        placeholder="Centro"
+                                        value={newOrder.neighborhood || ''}
+                                        onChange={e => setNewOrder({ ...newOrder, neighborhood: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
                                     <label className="text-gray-400 text-xs uppercase font-bold">Teléfono (Opcional)</label>
                                     <input
                                         className="w-full bg-dark-900 border border-white/10 rounded p-3 text-white focus:border-primary-500 outline-none"
@@ -444,6 +464,24 @@ export default function Orders() {
                                     >
                                         <MapPin size={20} />
                                     </button>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-gray-400 text-xs uppercase">Ciudad</label>
+                                    <input
+                                        className="w-full bg-dark-900 border border-white/10 rounded p-2 text-white"
+                                        value={editingOrder.city || ''}
+                                        onChange={e => setEditingOrder({ ...editingOrder, city: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-gray-400 text-xs uppercase">Barrio</label>
+                                    <input
+                                        className="w-full bg-dark-900 border border-white/10 rounded p-2 text-white"
+                                        value={editingOrder.neighborhood || ''}
+                                        onChange={e => setEditingOrder({ ...editingOrder, neighborhood: e.target.value })}
+                                    />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
