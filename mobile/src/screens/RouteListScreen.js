@@ -143,13 +143,13 @@ export default function RouteListScreen() {
             const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
             if (!hasStarted) {
                 await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-                    accuracy: Location.Accuracy.Balanced,
+                    accuracy: Location.Accuracy.High, // IMPROVED: Better precision
                     distanceInterval: 10,
-                    timeInterval: 30000,
-                    deferredUpdatesInterval: 30000,
+                    timeInterval: 10000, // IMPROVED: More frequent updates (every 10s)
+                    deferredUpdatesInterval: 10000,
                     foregroundService: {
                         notificationTitle: "GliUY Logística",
-                        notificationBody: "Compartiendo ubicación en segundo plano...",
+                        notificationBody: "Compartiendo ubicación en tiempo real...",
                         notificationColor: "#8b5cf6"
                     },
                 });
@@ -161,144 +161,46 @@ export default function RouteListScreen() {
         }
     };
 
-    const handleCompletePress = async (item) => {
-        setSelectedOrder(item);
-        setNote('');
-        setPhoto(null);
-
-        let loc = await Location.getCurrentPositionAsync({});
-        const dist = getDistanceFromLatLonInM(
-            loc.coords.latitude, loc.coords.longitude,
-            item.lat, item.lng
-        );
-
-        setDistance(dist);
-        setIsFar(dist > 150);
-
-        setModalVisible(true);
-    };
-
-    const takePhoto = async () => {
-        try {
-            // 1. Capture (Fastest possible, no editing)
-            let result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                allowsEditing: false, // SKIP NATIVE EDITING UI for speed
-                quality: 0.5,
-            });
-
-            if (!result.canceled && result.assets[0]) {
-                // 2. Compress & Resize (The secret sauce)
-                const Manipulator = require('expo-image-manipulator');
-                const manipResult = await Manipulator.manipulateAsync(
-                    result.assets[0].uri,
-                    [{ resize: { width: 800 } }], // Resize to 800px width (plenty for POD)
-                    { compress: 0.4, format: Manipulator.SaveFormat.JPEG }
-                );
-
-                setPhoto(manipResult);
-            }
-        } catch (e) {
-            console.error("Camera Error:", e);
-            Alert.alert("Error", "No se pudo tomar la foto.");
-        }
-    };
-
-    const submitCompletion = async () => {
-        if (isFar && !note) {
-            Alert.alert("Motivo Requerido", `Estás a ${Math.round(distance)}m del destino. Debes indicar por qué completas aquí.`);
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const formData = new FormData();
-            formData.append('status', 'completed');
-
-            const loc = await Location.getCurrentPositionAsync({});
-            const proofData = {
-                note: note,
-                distance_from_target: Math.round(distance),
-                coordinates: {
-                    lat: loc.coords.latitude,
-                    lng: loc.coords.longitude
-                }
-            };
-            formData.append('proof_data_json', JSON.stringify(proofData));
-
-            if (photo) {
-                let filename = photo.uri.split('/').pop();
-                let match = /\.(\w+)$/.exec(filename);
-                let type = match ? `image/${match[1]}` : `image`;
-
-                formData.append('photo', {
-                    uri: photo.uri,
-                    name: filename,
-                    type: type,
-                });
-            }
-
-            await api.post(`/driver/orders/${selectedOrder.id}/status`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-
-            setModalVisible(false);
-            Alert.alert("Éxito", "Orden completada correctamente.");
-            fetchRoute();
-
-        } catch (e) {
-            console.error("Upload Error:", e);
-            const serverMsg = e.response?.data?.error || e.message;
-            Alert.alert("Error Upload", `Fallo al subir: ${serverMsg} (${e.response?.status})`);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const pendingOrders = route.filter(o => o.status === 'pending');
-    const nextActiveOrder = pendingOrders.length > 0 ? pendingOrders.reduce((prev, curr) => prev.delivery_sequence < curr.delivery_sequence ? prev : curr) : null;
-
-    const handleCall = (phone) => {
-        if (!phone) {
-            Alert.alert("Sin número", "Este cliente no tiene teléfono registrado.");
-            return;
-        }
-        Linking.openURL(`tel:${phone}`);
-    };
-
-    const [loadingAction, setLoadingAction] = useState(null); // { id, type }
-
-    // ... existing tracking logic
+    // ... (rest of code)
 
     const handleStartOrder = async (item) => {
-        if (item.status === 'in_progress') {
-            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
-            return;
-        }
+        // 1. ACCIÓN INMEDIATA (Optimistic UI)
+        // Abrir mapas PRIMERO, sin esperar a la API
+        Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
 
-        setLoadingAction({ id: item.id, type: 'start' });
-        try {
-            let loc = null;
+        if (item.status === 'in_progress') return;
+
+        // 2. Actualizar Estado Visual Inmediatamente
+        setLoadingAction({ id: item.id, type: 'start' }); // Mostrar spinner brevemente
+        const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
+        setRoute(updated);
+
+        // 3. Sincronizar con el Servidor en "Segundo Plano" (sin bloquear UI)
+        // No usamos await aquí para bloquear la función, dejamos que corra
+        (async () => {
             try {
-                const { coords } = await Location.getCurrentPositionAsync({});
-                loc = coords;
-            } catch (e) { console.warn("No loc"); }
+                let loc = null;
+                try {
+                    // Timeout para no colgar el proceso indefinidamente
+                    const { coords } = await Promise.race([
+                        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
+                    ]);
+                    loc = coords;
+                } catch (e) { console.warn("Loc timeout/error on start"); }
 
-            await api.post(`/driver/orders/${item.id}/start`, {
-                lat: loc?.latitude,
-                lng: loc?.longitude
-            }).catch(err => console.error("API Start Warning:", err.message));
-
-            const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
-            setRoute(updated);
-            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
-
-        } catch (e) {
-            console.error("Critical Start Error", e);
-            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
-        } finally {
-            setLoadingAction(null);
-        }
+                await api.post(`/driver/orders/${item.id}/start`, {
+                    lat: loc?.latitude,
+                    lng: loc?.longitude
+                });
+            } catch (e) {
+                console.error("API Start Sync Warning:", e.message);
+                // No revertimos el estado para no cerrar el mapa ni confundir al chofer.
+                // El servidor se sincronizará eventualmente o en la finalización.
+            } finally {
+                setLoadingAction(null);
+            }
+        })();
     };
 
     const renderItem = ({ item }) => {

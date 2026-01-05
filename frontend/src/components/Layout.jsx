@@ -5,7 +5,7 @@ import api from '../services/api';
 
 const Layout = () => {
     const [user] = useState(JSON.parse(localStorage.getItem('user') || '{}'));
-    const [companyName, setCompanyName] = useState('Logística AI');
+    const [companyName, setCompanyName] = useState('FacilEnvio');
 
     React.useEffect(() => {
         api.get('/company').then(res => {

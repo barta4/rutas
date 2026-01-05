@@ -62,7 +62,7 @@ export default function LoginScreen() {
                 <View style={styles.iconContainer}>
                     <Truck size={48} color="#8b5cf6" />
                 </View>
-                <Text style={styles.title}>Logística AI</Text>
+                <Text style={styles.title}>FacilEnvio</Text>
                 <Text style={styles.subtitle}>App Conductores</Text>
             </View>
 
