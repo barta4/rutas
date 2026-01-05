@@ -6,10 +6,10 @@ const fs = require('fs');
 
 async function runMigration() {
     try {
-        const sqlPath = path.join(__dirname, '../database/migrations/007_add_geocoding_fields.sql');
+        const sqlPath = path.join(__dirname, '../database/migrations/008_create_service_areas.sql');
         const sql = fs.readFileSync(sqlPath, 'utf8');
 
-        console.log('Running migration: 007_add_geocoding_fields.sql');
+        console.log('Running migration: 008_create_service_areas.sql');
         await db.query(sql);
         console.log('Migration completed successfully.');
         process.exit(0);

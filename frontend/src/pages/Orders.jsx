@@ -17,9 +17,21 @@ export default function Orders() {
 
     // Token handled by api interceptor
 
+    const [locationsData, setLocationsData] = useState({});
+
     useEffect(() => {
         fetchOrders();
+        fetchLocations();
     }, []);
+
+    const fetchLocations = async () => {
+        try {
+            const res = await api.get('/locations');
+            setLocationsData(res.data);
+        } catch (e) {
+            console.error('Error loading locations', e);
+        }
+    };
 
     const fetchOrders = async () => {
         try {
@@ -274,21 +286,30 @@ export default function Orders() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-gray-400 text-xs uppercase font-bold">Ciudad</label>
-                                    <input
+                                    <select
                                         className="w-full bg-dark-900 border border-white/10 rounded p-3 text-white focus:border-primary-500 outline-none"
-                                        placeholder="Montevideo"
                                         value={newOrder.city || ''}
-                                        onChange={e => setNewOrder({ ...newOrder, city: e.target.value })}
-                                    />
+                                        onChange={e => setNewOrder({ ...newOrder, city: e.target.value, neighborhood: '' })}
+                                    >
+                                        <option value="">Seleccionar Ciudad</option>
+                                        {Object.keys(locationsData).map(city => (
+                                            <option key={city} value={city}>{city}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-gray-400 text-xs uppercase font-bold">Barrio</label>
-                                    <input
+                                    <select
                                         className="w-full bg-dark-900 border border-white/10 rounded p-3 text-white focus:border-primary-500 outline-none"
-                                        placeholder="Centro"
                                         value={newOrder.neighborhood || ''}
                                         onChange={e => setNewOrder({ ...newOrder, neighborhood: e.target.value })}
-                                    />
+                                        disabled={!newOrder.city}
+                                    >
+                                        <option value="">Seleccionar Barrio</option>
+                                        {newOrder.city && locationsData[newOrder.city]?.map(loc => (
+                                            <option key={loc.id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
@@ -469,19 +490,30 @@ export default function Orders() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-gray-400 text-xs uppercase">Ciudad</label>
-                                    <input
+                                    <select
                                         className="w-full bg-dark-900 border border-white/10 rounded p-2 text-white"
                                         value={editingOrder.city || ''}
-                                        onChange={e => setEditingOrder({ ...editingOrder, city: e.target.value })}
-                                    />
+                                        onChange={e => setEditingOrder({ ...editingOrder, city: e.target.value, neighborhood: '' })}
+                                    >
+                                        <option value="">Seleccionar Ciudad</option>
+                                        {Object.keys(locationsData).map(city => (
+                                            <option key={city} value={city}>{city}</option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="text-gray-400 text-xs uppercase">Barrio</label>
-                                    <input
+                                    <select
                                         className="w-full bg-dark-900 border border-white/10 rounded p-2 text-white"
                                         value={editingOrder.neighborhood || ''}
                                         onChange={e => setEditingOrder({ ...editingOrder, neighborhood: e.target.value })}
-                                    />
+                                        disabled={!editingOrder.city}
+                                    >
+                                        <option value="">Seleccionar Barrio</option>
+                                        {editingOrder.city && locationsData[editingOrder.city]?.map(loc => (
+                                            <option key={loc.id} value={loc.name}>{loc.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-4">

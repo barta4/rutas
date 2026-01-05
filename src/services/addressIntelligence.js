@@ -1,6 +1,6 @@
 const googleMaps = require('./googleMapsService');
 const gemini = require('./geminiService');
-const { POSTAL_CODES } = require('../config/postal_codes');
+const db = require('../config/db');
 
 /**
  * Calcula la distancia en km entre dos puntos (Haversine)
@@ -21,22 +21,25 @@ function deg2rad(deg) {
     return deg * (Math.PI / 180);
 }
 
-/**
- * Resuelve la ubicación final de un pedido usando IA Híbrida y validación de distancia.
- * Flujo: Lookup Postal -> Google Maps (con componentes) -> Validación Distancia -> (Si falla) -> Gemini
- * @param {string} rawAddress
- * @param {Object} context - { city, neighborhood, depotLocation: { lat, lng }, maxDistanceKm }
- */
+// ... (previous imports)
+
 async function resolveAddress(rawAddress, context = {}) {
     if (!rawAddress) return null;
 
     const { city, neighborhood, depotLocation, maxDistanceKm = 50 } = context;
 
-    // 0. Enriquecer con Código Postal si es posible
+    // 0. Enriquecer con Código Postal desde DB
     let postalCode = null;
-    if (city && neighborhood && POSTAL_CODES[city] && POSTAL_CODES[city][neighborhood]) {
-        postalCode = POSTAL_CODES[city][neighborhood];
-        console.log(`📍 Postal Code Resolved for ${city}, ${neighborhood}: ${postalCode}`);
+    if (city && neighborhood) {
+        try {
+            const res = await db.query('SELECT postal_code FROM service_areas WHERE city = $1 AND neighborhood = $2', [city, neighborhood]);
+            if (res.rowCount > 0 && res.rows[0].postal_code) {
+                postalCode = res.rows[0].postal_code;
+                console.log(`📍 Postal Code Resolved for ${city}, ${neighborhood} (DB): ${postalCode}`);
+            }
+        } catch (e) {
+            console.error('Error fetching postal code from DB:', e.message);
+        }
     }
 
     // Paso 1: Intento Directo con Google Maps y Componentes

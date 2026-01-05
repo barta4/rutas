@@ -134,6 +134,12 @@ export default function Settings() {
                 >
                     Depósitos
                 </button>
+                <button
+                    onClick={() => setActiveTab('locations')}
+                    className={`pb-2 px-4 text-sm font-medium transition-colors ${activeTab === 'locations' ? 'border-b-2 border-primary-500 text-primary-400' : 'text-gray-400 hover:text-white'}`}
+                >
+                    Ubicaciones
+                </button>
             </div>
 
             {/* Company Settings */}
@@ -291,6 +297,142 @@ export default function Settings() {
                         >
                             Guardar
                         </button>
+                    </div>
+                </div>
+            )}
+            {/* Locations Settings */}
+            {activeTab === 'locations' && (
+                <LocationsSettings />
+            )}
+        </div>
+    );
+}
+
+function LocationsSettings() {
+    const [locations, setLocations] = useState({});
+    const [loading, setLoading] = useState(true);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [form, setForm] = useState({ city: '', neighborhood: '', postal_code: '' });
+
+    useEffect(() => {
+        fetchLocations();
+    }, []);
+
+    const fetchLocations = async () => {
+        try {
+            const res = await api.get('/locations');
+            setLocations(res.data);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('¿Eliminar esta ubicación?')) return;
+        try {
+            await api.delete(`/locations/${id}`);
+            fetchLocations();
+        } catch (e) {
+            alert('Error eliminando ubicación');
+        }
+    };
+
+    const handleSave = async () => {
+        try {
+            await api.post('/locations', form);
+            setModalOpen(false);
+            setForm({ city: '', neighborhood: '', postal_code: '' });
+            fetchLocations();
+        } catch (e) {
+            alert('Error guardando ubicación');
+        }
+    };
+
+    return (
+        <div>
+            <div className="flex justify-end mb-4">
+                <button onClick={() => setModalOpen(true)} className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                    <Plus size={18} /> Nueva Ubicación
+                </button>
+            </div>
+
+            <div className="space-y-6">
+                {Object.entries(locations).map(([city, neighborhoods]) => (
+                    <div key={city} className="bg-dark-800 rounded-xl border border-white/10 overflow-hidden">
+                        <div className="bg-white/5 p-4 font-bold text-white flex justify-between items-center">
+                            <span>{city}</span>
+                            <span className="text-xs bg-white/10 px-2 py-1 rounded text-gray-300">{neighborhoods.length} Barrios</span>
+                        </div>
+                        <table className="w-full text-left text-sm text-gray-300">
+                            <thead className="text-xs uppercase text-gray-500 bg-black/20">
+                                <tr>
+                                    <th className="p-3">Barrio</th>
+                                    <th className="p-3">Código Postal</th>
+                                    <th className="p-3 text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                                {neighborhoods.map(loc => (
+                                    <tr key={loc.id} className="hover:bg-white/5">
+                                        <td className="p-3">{loc.name}</td>
+                                        <td className="p-3 font-mono text-xs">{loc.postal_code || '-'}</td>
+                                        <td className="p-3 text-right">
+                                            <button onClick={() => handleDelete(loc.id)} className="text-red-400 hover:text-red-300">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ))}
+            </div>
+
+            {modalOpen && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-dark-800 rounded-2xl w-full max-w-sm border border-white/10 shadow-2xl p-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white">Nueva Ubicación</h2>
+                            <button onClick={() => setModalOpen(false)}><X className="text-gray-400 hover:text-white" /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-gray-400 text-xs uppercase mb-1">Ciudad</label>
+                                <input
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary-500"
+                                    value={form.city}
+                                    placeholder="Ej. Montevideo"
+                                    onChange={e => setForm({ ...form, city: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-xs uppercase mb-1">Barrio</label>
+                                <input
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary-500"
+                                    value={form.neighborhood}
+                                    placeholder="Ej. Pocitos"
+                                    onChange={e => setForm({ ...form, neighborhood: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-gray-400 text-xs uppercase mb-1">Código Postal</label>
+                                <input
+                                    className="w-full bg-dark-900 border border-white/10 rounded-lg p-3 text-white outline-none focus:border-primary-500"
+                                    value={form.postal_code}
+                                    placeholder="Ej. 11300"
+                                    onChange={e => setForm({ ...form, postal_code: e.target.value })}
+                                />
+                            </div>
+                            <button
+                                onClick={handleSave}
+                                className="w-full bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 rounded-lg mt-4"
+                            >
+                                Guardar
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

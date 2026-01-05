@@ -104,6 +104,11 @@ const publicController = require('./controllers/publicController');
 app.get('/public/orders/:id', publicController.getOrderStatus); // Public access
 
 
+const locationsController = require('./controllers/locationsController');
+app.get('/v1/locations', locationsController.getLocations);
+app.post('/v1/locations', locationsController.createLocation);
+app.delete('/v1/locations/:id', locationsController.deleteLocation);
+
 const ordersController = require('./controllers/ordersController');
 app.post('/v1/orders', ordersController.createOrder);
 app.get('/v1/orders', ordersController.getOrders);
