@@ -32,6 +32,8 @@ export default function ApiDocs() {
   -d '{
     "customer_name": "Juan Perez",
     "address_text": "Av 18 de Julio 1234",
+    "city": "Montevideo",
+    "neighborhood": "Centro",
     "customer_phone": "099123456"
   }'`,
         node: `const axios = require('axios');
@@ -39,6 +41,8 @@ export default function ApiDocs() {
 await axios.post('https://api.gliuy.com/v1/orders', {
   customer_name: 'Juan Perez',
   address_text: 'Av 18 de Julio 1234',
+  city: 'Montevideo',     // Opcional: Mejora precisión
+  neighborhood: 'Centro', // Opcional: Mejora precisión
   customer_phone: '099123456'
 }, {
   headers: { 'x-api-key': 'YOUR_API_KEY' }
@@ -49,6 +53,8 @@ requests.post('https://api.gliuy.com/v1/orders',
     json={
         "customer_name": "Juan Perez",
         "address_text": "Av 18 de Julio 1234",
+        "city": "Montevideo",
+        "neighborhood": "Centro",
         "customer_phone": "099123456"
     },
     headers={"x-api-key": "YOUR_API_KEY"}
