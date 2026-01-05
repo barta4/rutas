@@ -90,6 +90,7 @@ export default function RouteListScreen() {
     const [route, setRoute] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isTracking, setIsTracking] = useState(false);
+    const [loadingAction, setLoadingAction] = useState(null); // { id: orderId, type: 'start' | 'complete' }
 
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -143,13 +144,13 @@ export default function RouteListScreen() {
             const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
             if (!hasStarted) {
                 await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-                    accuracy: Location.Accuracy.High, // IMPROVED: Better precision
-                    distanceInterval: 10,
-                    timeInterval: 10000, // IMPROVED: More frequent updates (every 10s)
-                    deferredUpdatesInterval: 10000,
+                    accuracy: Location.Accuracy.Balanced, // REVERT: High accuracy might cause crashes on some devices
+                    distanceInterval: 15, // Relaxed
+                    timeInterval: 15000, // Relaxed to 15s
+                    deferredUpdatesInterval: 15000,
                     foregroundService: {
                         notificationTitle: "GliUY Logística",
-                        notificationBody: "Compartiendo ubicación en tiempo real...",
+                        notificationBody: "Compartiendo ubicación...",
                         notificationColor: "#8b5cf6"
                     },
                 });
@@ -157,54 +158,135 @@ export default function RouteListScreen() {
             setIsTracking(true);
         } catch (e) {
             console.error('Tracking Error:', e);
-            Alert.alert('Error', 'No se pudo iniciar el tracking: ' + e.message);
+            // Non-blocking alert
+            // Alert.alert('Error', 'No se pudo iniciar el tracking: ' + e.message);
         }
     };
 
-    // ... (rest of code)
-
-    const handleStartOrder = async (item) => {
-        // 1. ACCIÓN INMEDIATA (Optimistic UI)
-        // Abrir mapas PRIMERO, sin esperar a la API
-        Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
-
-        if (item.status === 'in_progress') return;
-
-        // 2. Actualizar Estado Visual Inmediatamente
-        setLoadingAction({ id: item.id, type: 'start' }); // Mostrar spinner brevemente
-        const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
-        setRoute(updated);
-
-        // 3. Sincronizar con el Servidor en "Segundo Plano" (sin bloquear UI)
-        // No usamos await aquí para bloquear la función, dejamos que corra
-        (async () => {
-            try {
-                let loc = null;
-                try {
-                    // Timeout para no colgar el proceso indefinidamente
-                    const { coords } = await Promise.race([
-                        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-                        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-                    ]);
-                    loc = coords;
-                } catch (e) { console.warn("Loc timeout/error on start"); }
-
-                await api.post(`/driver/orders/${item.id}/start`, {
-                    lat: loc?.latitude,
-                    lng: loc?.longitude
-                });
-            } catch (e) {
-                console.error("API Start Sync Warning:", e.message);
-                // No revertimos el estado para no cerrar el mapa ni confundir al chofer.
-                // El servidor se sincronizará eventualmente o en la finalización.
-            } finally {
-                setLoadingAction(null);
-            }
-        })();
+    const handleCall = (phoneNumber) => {
+        Linking.openURL(`tel:${phoneNumber}`);
     };
 
+    const handleOpenModal = async (order) => {
+        setSelectedOrder(order);
+        setNote('');
+        setPhoto(null);
+        setIsFar(false);
+
+        try {
+            const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            const dist = getDistanceFromLatLonInM(coords.latitude, coords.longitude, order.lat, order.lng);
+            setDistance(dist);
+            if (dist > 100) { // 100 metros
+                setIsFar(true);
+            }
+        } catch (e) {
+            console.error("Error getting location for distance check:", e);
+            Alert.alert("Error de Ubicación", "No se pudo obtener tu ubicación actual para verificar la distancia.");
+            setIsFar(true); // Asumir que está lejos si no se puede obtener la ubicación
+        }
+
+        setModalVisible(true);
+    };
+
+    const handleTakePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permiso Requerido', 'Necesitamos permiso para acceder a la cámara.');
+            return;
+        }
+
+        let result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: false,
+            quality: 0.7,
+            base64: true,
+        });
+
+        if (!result.canceled) {
+            setPhoto(result.assets[0].base64);
+        }
+    };
+
+    const submitCompletion = async () => {
+        if (isFar && !photo) {
+            Alert.alert('Foto Requerida', 'Debes tomar una foto para finalizar la orden si estás lejos del destino.');
+            return;
+        }
+
+        if (!selectedOrder) return;
+
+        setLoading(true);
+        try {
+            let loc = null;
+            try {
+                const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+                loc = coords;
+            } catch (e) {
+                console.warn("Could not get current location for completion:", e);
+            }
+
+            await api.post(`/driver/orders/${selectedOrder.id}/complete`, {
+                note,
+                photo: photo ? `data:image/jpeg;base64,${photo}` : null,
+                lat: loc?.latitude,
+                lng: loc?.longitude,
+            });
+
+            Alert.alert('Éxito', 'Orden finalizada correctamente.');
+            setModalVisible(false);
+            fetchRoute(); // Refresh the route list
+        } catch (e) {
+            console.error("Error completing order:", e);
+            Alert.alert('Error', 'No se pudo finalizar la orden: ' + (e.response?.data?.message || e.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleStartOrder = async (item) => {
+        try {
+            // 1. Optimistic UI (Keep this, it's good UX)
+            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
+
+            if (item.status === 'in_progress') return;
+
+            setLoadingAction({ id: item.id, type: 'start' });
+            const updated = route.map(r => r.id === item.id ? { ...r, status: 'in_progress' } : r);
+            setRoute(updated);
+
+            // 2. Safe async call
+            setTimeout(async () => {
+                try {
+                    let loc = null;
+                    try {
+                        // Quick location check, fallback to null if fails
+                        const status = await Location.getForegroundPermissionsAsync();
+                        if (status.granted) {
+                            loc = await Location.getLastKnownPositionAsync({});
+                        }
+                    } catch (e) { console.warn("Loc check failed"); }
+
+                    await api.post(`/driver/orders/${item.id}/start`, {
+                        lat: loc?.coords?.latitude,
+                        lng: loc?.coords?.longitude
+                    });
+                } catch (e) {
+                    console.log("Background API update failed, but UI handles it.");
+                } finally {
+                    setLoadingAction(null);
+                }
+            }, 100);
+
+        } catch (e) {
+            console.error("Start Order Error", e);
+            setLoadingAction(null);
+        }
+    };
+
+    const nextActiveOrder = route.find(r => r.status === 'in_progress') || route.find(r => r.status === 'pending');
+
     const renderItem = ({ item }) => {
-        // ... vars
         const isCompleted = item.status === 'completed';
         const isActive = nextActiveOrder && item.id === nextActiveOrder.id;
         const isPending = item.status === 'pending';
