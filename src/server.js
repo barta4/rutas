@@ -116,13 +116,10 @@ app.put('/v1/orders/:id', ordersController.updateOrder);
 app.delete('/v1/orders/:id', ordersController.deleteOrder);
 app.post('/v1/orders/geocode', ordersController.geocodeOrderAddress);
 app.post('/v1/orders/optimize', ordersController.optimizeRouteHandler);
-app.post('/v1/orders/geocode', ordersController.geocodeOrderAddress);
-app.post('/v1/orders/optimize', ordersController.optimizeRouteHandler);
 app.post('/v1/orders/sequence', ordersController.saveRouteSequence);
 app.get('/v1/orders/loading-sheet', ordersController.getLoadingSheet); // New LIFO Route
 
 const adminController = require('./controllers/adminController');
-app.get('/v1/drivers', adminController.getDrivers);
 app.get('/v1/drivers', adminController.getDrivers);
 app.post('/v1/drivers', checkDriverLimit, adminController.createDriver);
 app.put('/v1/drivers/:id', adminController.updateDriver);

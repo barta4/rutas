@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
-import { Users, Truck, AlertTriangle, CheckCircle, Search, Shield, Calendar, Activity, UserPlus, Package, LogIn, Key, Settings } from 'lucide-react';
+import { Users, Truck, AlertTriangle, CheckCircle, Search, Shield, Calendar, Activity, UserPlus, Package, LogIn, Key, Settings, MapPin, Trash2, Plus } from 'lucide-react';
 
 export default function SuperAdmin() {
     const [tenants, setTenants] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('tenants');
 
     useEffect(() => {
         fetchData();
@@ -123,36 +124,58 @@ export default function SuperAdmin() {
                 </div>
             </div>
 
-            {/* System Configuration */}
-            <SystemConfigSection />
-
-            {/* Tenants Table */}
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-zinc-950 text-gray-400 text-xs uppercase tracking-wider">
-                        <tr>
-                            <th className="p-4">Empresa</th>
-                            <th className="p-4">Estado</th>
-                            <th className="p-4">Plan Actual</th>
-                            <th className="p-4">Acciones Rápidas</th>
-                            <th className="p-4 text-right">Gestión</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800">
-                        {filteredTenants.map(tenant => (
-                            <TenantRow
-                                key={tenant.id}
-                                tenant={tenant}
-                                onUpdateStatus={handleUpdateStatus}
-                                onExtendTrial={handleExtendTrial}
-                                onUpdatePlan={handleUpdatePlan}
-                                onImpersonate={handleImpersonate}
-                                onResetPassword={handleResetPassword}
-                            />
-                        ))}
-                    </tbody>
-                </table>
+            {/* Tabs */}
+            <div className="flex gap-4 mb-6 border-b border-zinc-800">
+                <button
+                    onClick={() => setActiveTab('tenants')}
+                    className={`px-4 py-2 text-sm font-bold uppercase transition-all ${activeTab === 'tenants' ? 'text-white border-b-2 border-red-500' : 'text-gray-500 hover:text-white'}`}
+                >
+                    Empresas
+                </button>
+                <button
+                    onClick={() => setActiveTab('locations')}
+                    className={`px-4 py-2 text-sm font-bold uppercase transition-all ${activeTab === 'locations' ? 'text-white border-b-2 border-purple-500' : 'text-gray-500 hover:text-white'}`}
+                >
+                    Ubicaciones
+                </button>
             </div>
+
+            {activeTab === 'locations' ? (
+                <LocationsSection />
+            ) : (
+                <>
+                    {/* System Configuration */}
+                    <SystemConfigSection />
+
+                    {/* Tenants Table */}
+                    <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-2xl">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-zinc-950 text-gray-400 text-xs uppercase tracking-wider">
+                                <tr>
+                                    <th className="p-4">Empresa</th>
+                                    <th className="p-4">Estado</th>
+                                    <th className="p-4">Plan Actual</th>
+                                    <th className="p-4">Acciones Rápidas</th>
+                                    <th className="p-4 text-right">Gestión</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-zinc-800">
+                                {filteredTenants.map(tenant => (
+                                    <TenantRow
+                                        key={tenant.id}
+                                        tenant={tenant}
+                                        onUpdateStatus={handleUpdateStatus}
+                                        onExtendTrial={handleExtendTrial}
+                                        onUpdatePlan={handleUpdatePlan}
+                                        onImpersonate={handleImpersonate}
+                                        onResetPassword={handleResetPassword}
+                                    />
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
@@ -291,6 +314,137 @@ const SystemConfigSection = () => {
                     </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">Este enlace se usará en el botón "Descargar APK" de la tienda de integraciones.</p>
+            </div>
+        </div>
+    );
+};
+
+const LocationsSection = () => {
+    const [locations, setLocations] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [newLoc, setNewLoc] = useState({ city: '', neighborhood: '', postal_code: '' });
+    const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        fetchLocations();
+    }, []);
+
+    const fetchLocations = async () => {
+        try {
+            setLoading(true);
+            const res = await api.get('/locations');
+            setLocations(res.data);
+        } catch (e) {
+            console.error(e);
+            alert('Error cargando ubicaciones');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleAdd = async () => {
+        if (!newLoc.city || !newLoc.neighborhood) return alert('Ciudad y Barrio son obligatorios');
+        try {
+            await api.post('/locations', newLoc);
+            setNewLoc({ city: '', neighborhood: '', postal_code: '' });
+            fetchLocations();
+        } catch (e) {
+            alert('Error guardando ubicación');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!confirm('¿Eliminar esta ubicación?')) return;
+        try {
+            await api.delete(`/locations/${id}`);
+            fetchLocations();
+        } catch (e) {
+            alert('Error eliminando ubicación');
+        }
+    };
+
+    const filteredCities = Object.keys(locations).filter(city =>
+        city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        locations[city].some(n => n.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    return (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mt-8">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <MapPin size={24} className="text-purple-500" /> Gestión de Ubicaciones (Global)
+                </h2>
+                <button onClick={fetchLocations} className="text-sm text-gray-400 hover:text-white">Refrescar</button>
+            </div>
+
+            <div className="bg-black/50 p-4 rounded-lg mb-6 border border-zinc-800">
+                <h3 className="text-sm font-bold text-gray-400 mb-3 uppercase">Agregar Nueva Zona</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                        placeholder="Ciudad (ej. Montevideo)"
+                        className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                        value={newLoc.city}
+                        onChange={e => setNewLoc({ ...newLoc, city: e.target.value })}
+                    />
+                    <input
+                        placeholder="Barrio (ej. Pocitos)"
+                        className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                        value={newLoc.neighborhood}
+                        onChange={e => setNewLoc({ ...newLoc, neighborhood: e.target.value })}
+                    />
+                    <input
+                        placeholder="Código Postal (Opcional)"
+                        className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white text-sm focus:border-purple-500 outline-none"
+                        value={newLoc.postal_code}
+                        onChange={e => setNewLoc({ ...newLoc, postal_code: e.target.value })}
+                    />
+                    <button
+                        onClick={handleAdd}
+                        disabled={loading}
+                        className="bg-purple-600 hover:bg-purple-500 text-white font-bold rounded px-4 py-2 flex items-center justify-center gap-2 transition-colors"
+                    >
+                        <Plus size={16} /> Agregar
+                    </button>
+                </div>
+            </div>
+
+            <div className="mb-4 flex items-center gap-2 bg-zinc-800 p-2 rounded-lg max-w-sm">
+                <Search size={16} className="text-gray-400" />
+                <input
+                    placeholder="Buscar ciudad o barrio..."
+                    className="bg-transparent text-white text-sm outline-none w-full"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+            </div>
+
+            <div className="space-y-4">
+                {filteredCities.map(city => (
+                    <div key={city} className="border border-zinc-800 rounded-lg overflow-hidden">
+                        <div className="bg-zinc-950 p-3 font-bold text-gray-300 flex justify-between items-center">
+                            <span>{city}</span>
+                            <span className="text-xs bg-zinc-800 px-2 py-1 rounded text-gray-500">{locations[city].length} barrios</span>
+                        </div>
+                        <div className="divide-y divide-zinc-800 bg-zinc-900/50">
+                            {locations[city].map(loc => (
+                                <div key={loc.id} className="p-3 flex justify-between items-center hover:bg-zinc-800/50 transition-colors">
+                                    <div>
+                                        <span className="text-sm text-gray-200">{loc.name}</span>
+                                        {loc.postal_code && <span className="ml-2 text-xs text-gray-500 font-mono">CP: {loc.postal_code}</span>}
+                                    </div>
+                                    <button
+                                        onClick={() => handleDelete(loc.id)}
+                                        className="text-red-900 hover:text-red-500 transition-colors"
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+                {filteredCities.length === 0 && <p className="text-gray-500 text-center py-8">No se encontraron ubicaciones.</p>}
             </div>
         </div>
     );
