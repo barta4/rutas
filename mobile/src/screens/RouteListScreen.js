@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Linking, RefreshControl, Alert, Modal, TextInput, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Linking, RefreshControl, Alert, Modal, TextInput, Image, PermissionsAndroid, Platform, ActivityIndicator } from 'react-native';
 import { MapPin, Navigation, Package, CheckCircle, LogOut, Radio, Camera as CameraIcon, X, Phone, User } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
@@ -118,6 +118,16 @@ export default function RouteListScreen() {
 
     const startAutomaticTracking = async () => {
         try {
+            // 0. (Android 13+) Request Notification Permission for Foreground Service
+            if (Platform.OS === 'android' && Platform.Version >= 33) {
+                const granted = await PermissionsAndroid.request(
+                    PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+                );
+                if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                    console.log("Notification permission denied");
+                }
+            }
+
             // 1. Primero foreground
             const { status: fgStatus } = await Location.requestForegroundPermissionsAsync();
 
@@ -126,20 +136,17 @@ export default function RouteListScreen() {
                 return;
             }
 
-            // 2. Luego background (crítico en Android 14+)
-            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
+            // 2. Background Permission (Optional validation)
+            // WARNING: Requesting this automatically might switch the app to Settings on some Android versions, causing a loop.
+            // We rely on Foreground Service (Notification) which works with "When in Use" permission for continuous tracking.
 
+            /* 
+            const { status: bgStatus } = await Location.requestBackgroundPermissionsAsync();
             if (bgStatus !== 'granted') {
-                Alert.alert(
-                    'Ubicación en segundo plano',
-                    'Para enviar tu ubicación constantemente, debes permitir "Permitir todo el tiempo" en los ajustes de ubicación.',
-                    [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Abrir ajustes', onPress: () => Linking.openSettings() }
-                    ]
-                );
-                return;
+                // Don't force open settings automatically
+                console.log("Background location not granted, proceeding with Foreground Service");
             }
+            */
 
             const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
             if (!hasStarted) {
@@ -247,7 +254,18 @@ export default function RouteListScreen() {
     const handleStartOrder = async (item) => {
         try {
             // 1. Optimistic UI (Keep this, it's good UX)
-            Linking.openURL(`google.navigation:q=${item.lat},${item.lng}`);
+            // Use try-catch to avoid crashes if navigation app is missing
+            try {
+                const url = `google.navigation:q=${item.lat},${item.lng}`;
+                const supported = await Linking.canOpenURL(url);
+                if (supported) {
+                    await Linking.openURL(url);
+                } else {
+                    Alert.alert("Error", "No se puede abrir Google Maps");
+                }
+            } catch (err) {
+                console.error("Navigation Error", err);
+            }
 
             if (item.status === 'in_progress') return;
 
@@ -315,16 +333,108 @@ export default function RouteListScreen() {
         );
     };
 
-    // ... in Modal
+    const handleLogout = async () => {
+        try {
+            const hasStarted = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME);
+            if (hasStarted) {
+                await Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME);
+            }
+        } catch (e) {
+            console.error("Logout cleanup error", e);
+        }
+        logout();
+    };
 
-    <TouchableOpacity
-        style={styles.submitButton}
-        onPress={submitCompletion}
-        disabled={loading}
-    >
-        {loading && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
-        <Text style={styles.submitText}>{loading ? 'Subiendo datos...' : 'Finalizar Orden'}</Text>
-    </TouchableOpacity>
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <View>
+                    <Text style={styles.greeting}>Hola, {driver?.name || 'Conductor'}</Text>
+                    <Text style={styles.status}>{isTracking ? '● Rastreo Activo' : '○ Rastreo Inactivo'}</Text>
+                </View>
+                <TouchableOpacity onPress={handleLogout} style={{ padding: 8 }}>
+                    <LogOut color="#ef4444" size={24} />
+                </TouchableOpacity>
+            </View>
+
+            <FlatList
+                data={route}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchRoute} tintColor="#fff" />}
+                contentContainerStyle={styles.list}
+                ListEmptyComponent={
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 }}>
+                        <Package size={64} color="#3f3f46" />
+                        <Text style={{ color: '#71717a', marginTop: 16 }}>No hay rutas asignadas</Text>
+                    </View>
+                }
+            />
+
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalView}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Finalizar Entrega</Text>
+                        <TouchableOpacity onPress={() => setModalVisible(false)}>
+                            <X color="#fff" size={24} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {selectedOrder && (
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={styles.customerName}>{selectedOrder.customer_name}</Text>
+                            <Text style={styles.address}>{selectedOrder.address_text}</Text>
+                        </View>
+                    )}
+
+                    {isFar && (
+                        <View style={styles.warningBox}>
+                            <Text style={styles.warningText}>Ubicación Lejana</Text>
+                            <Text style={styles.warningSubtext}>
+                                Estás a {Math.round(distance)}m del destino. Se requiere foto obligatoria.
+                            </Text>
+                        </View>
+                    )}
+
+                    <Text style={styles.label}>Notas de Entrega</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Ej. Entregado en portería..."
+                        placeholderTextColor="#71717a"
+                        value={note}
+                        onChangeText={setNote}
+                        multiline
+                    />
+
+                    <Text style={styles.label}>Foto de Comprobante {isFar && '*'}</Text>
+                    <TouchableOpacity style={styles.photoButton} onPress={handleTakePhoto}>
+                        {photo ? (
+                            <Image source={{ uri: `data:image/jpeg;base64,${photo}` }} style={styles.photoPreview} resizeMode="cover" />
+                        ) : (
+                            <>
+                                <CameraIcon color="#a1a1aa" size={32} />
+                                <Text style={styles.photoButtonText}>Tomar Foto</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.submitButton, loading && { opacity: 0.7 }]}
+                        onPress={submitCompletion}
+                        disabled={loading}
+                    >
+                        {loading && <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />}
+                        <Text style={styles.submitText}>{loading ? 'Finalizando...' : 'Confirmar Entrega'}</Text>
+                    </TouchableOpacity>
+                </View>
+            </Modal>
+        </View>
+    );
 }
 
 const styles = StyleSheet.create({

@@ -295,7 +295,6 @@ module.exports = {
     optimizeRouteHandler,
     saveRouteSequence,
     deleteOrder,
-    deleteOrder,
     geocodeOrderAddress,
     getLoadingSheet
 };
