@@ -313,23 +313,61 @@ export default function RouteListScreen() {
         const isStarting = loadingAction?.id === item.id && loadingAction?.type === 'start';
 
         return (
-            // ... inside View
-            // ... existing JSX
-            <TouchableOpacity
-                style={[styles.actionButton, styles.navButton, isDisabled && { backgroundColor: '#3f3f46' }]}
-                onPress={() => handleStartOrder(item)}
-                disabled={isDisabled || isStarting}
-            >
-                {isStarting ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                    <Navigation size={18} color="#fff" />
+            <View style={[styles.card, isCompleted && { opacity: 0.6 }]}>
+                <View style={styles.cardHeader}>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>#{item.delivery_sequence}</Text>
+                    </View>
+                    <Text style={[styles.status, { color: isCompleted ? '#10b981' : '#facc15' }]}>
+                        {isCompleted ? 'COMPLETADO' : (isActive ? 'EN CURSO' : 'PENDIENTE')}
+                    </Text>
+                </View>
+
+                <View style={styles.infoRow}>
+                    <User size={16} color="#a1a1aa" />
+                    <Text style={styles.customerName}>{item.customer_name}</Text>
+                </View>
+
+                <View style={[styles.infoRow, { alignItems: 'flex-start' }]}>
+                    <MapPin size={16} color="#a1a1aa" style={{ marginTop: 2 }} />
+                    <Text style={[styles.address, { flex: 1 }]}>{item.address_text}</Text>
+                </View>
+
+                {!isCompleted && (
+                    <View style={styles.actions}>
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.callButton]}
+                            onPress={() => handleCall(item.customer_phone)}
+                        >
+                            <Phone size={18} color="#fff" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.navButton, isDisabled && { backgroundColor: '#3f3f46' }]}
+                            onPress={() => handleStartOrder(item)}
+                            disabled={isDisabled || isStarting}
+                        >
+                            {isStarting ? (
+                                <ActivityIndicator size="small" color="#fff" />
+                            ) : (
+                                <Navigation size={18} color="#fff" />
+                            )}
+                            <Text style={styles.actionText}>
+                                {isStarting ? '...' : (item.status === 'in_progress' ? 'Retomar' : 'Ir')}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.completeButton, isDisabled && { backgroundColor: '#3f3f46' }]}
+                            onPress={() => handleOpenModal(item)}
+                            disabled={isDisabled}
+                        >
+                            <CheckCircle size={18} color="#fff" />
+                            <Text style={styles.actionText}>Fin</Text>
+                        </TouchableOpacity>
+                    </View>
                 )}
-                <Text style={styles.actionText}>
-                    {isStarting ? 'Avisando...' : (isDisabled ? '...' : (item.status === 'in_progress' ? 'Retomar' : 'Ir'))}
-                </Text>
-            </TouchableOpacity>
-            // ...
+            </View>
         );
     };
 
